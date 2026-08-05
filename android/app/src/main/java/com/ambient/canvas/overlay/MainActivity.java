@@ -1,9 +1,12 @@
 package com.ambient.canvas.overlay;
 
 import android.Manifest;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.view.WindowManager;
 import android.webkit.GeolocationPermissions;
+import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
 
 import androidx.core.app.ActivityCompat;
@@ -12,7 +15,15 @@ import androidx.core.content.ContextCompat;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
+
     private static final int GEOLOCATION_PERMISSION_REQUEST = 1001;
+
+    /** AND-06: shared with AmbientDreamService so the screensaver can render
+     *  real state instead of hardcoded defaults. */
+    static final String DREAM_PREFS = "ambient_dream_state";
+    static final String DREAM_STATE_KEY = "state_json";
+    static final String DREAM_STATE_UPDATED_AT = "updated_at";
+
     private GeolocationPermissions.Callback pendingGeoCallback;
     private String pendingGeoOrigin;
 
@@ -21,6 +32,13 @@ public class MainActivity extends BridgeActivity {
         super.onCreate(savedInstanceState);
 
         if (getBridge() != null && getBridge().getWebView() != null) {
+            // AND-06: expose a minimal, local-assets-only JS interface. The web
+            // layer pushes a state snapshot here; AmbientDreamService reads it
+            // back. This is necessary because the dream WebView has no Capacitor
+            // bridge and runs on a file:// origin, so it shares no localStorage
+            // with the main app.
+            getBridge().getWebView().addJavascriptInterface(new AmbientNativeBridge(), "AmbientNative");
+
             getBridge().getWebView().setWebChromeClient(new WebChromeClient() {
                 @Override
                 public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {
@@ -28,7 +46,6 @@ public class MainActivity extends BridgeActivity {
                         callback.invoke(origin, true, false);
                         return;
                     }
-
                     pendingGeoCallback = callback;
                     pendingGeoOrigin = origin;
                     ActivityCompat.requestPermissions(
@@ -39,6 +56,23 @@ public class MainActivity extends BridgeActivity {
                 }
             });
         }
+
+        // AND-04: an ambient art display that lets the panel sleep is useless.
+        // Default on; the web layer can turn it off via AmbientNative.setKeepAwake.
+        applyKeepAwake(true);
+    }
+
+    private void applyKeepAwake(final boolean enabled) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (enabled) {
+                    getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                } else {
+                    getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                }
+            }
+        });
     }
 
     private boolean hasLocationPermission() {
@@ -49,7 +83,6 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-
         if (requestCode != GEOLOCATION_PERMISSION_REQUEST || pendingGeoCallback == null) return;
 
         boolean granted = false;
@@ -59,9 +92,32 @@ public class MainActivity extends BridgeActivity {
                 break;
             }
         }
-
         pendingGeoCallback.invoke(pendingGeoOrigin, granted, false);
         pendingGeoCallback = null;
         pendingGeoOrigin = null;
+    }
+
+    /** Minimal native surface. Only reachable from bundled local assets. */
+    private class AmbientNativeBridge {
+
+        @JavascriptInterface
+        public void saveDreamState(String json) {
+            if (json == null || json.length() > 64_000) return;
+            SharedPreferences prefs = getSharedPreferences(DREAM_PREFS, MODE_PRIVATE);
+            prefs.edit()
+                .putString(DREAM_STATE_KEY, json)
+                .putLong(DREAM_STATE_UPDATED_AT, System.currentTimeMillis())
+                .apply();
+        }
+
+        @JavascriptInterface
+        public void setKeepAwake(boolean enabled) {
+            applyKeepAwake(enabled);
+        }
+
+        @JavascriptInterface
+        public boolean isNativeHost() {
+            return true;
+        }
     }
 }

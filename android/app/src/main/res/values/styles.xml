@@ -1,12 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <!-- Base application theme. -->
-    <style name="AppTheme" parent="Theme.AppCompat.Light.DarkActionBar">
-        <!-- Customize your theme here. -->
+    <!--
+      Base application theme.
+      Was Theme.AppCompat.Light.DarkActionBar, which is a light theme on an app
+      that is black in every single screen. Switched to the DayNight NoActionBar
+      base so the window background never flashes white on cold start.
+    -->
+    <style name="AppTheme" parent="Theme.AppCompat.DayNight.NoActionBar">
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
         <item name="colorAccent">@color/colorAccent</item>
+        <item name="android:windowBackground">@color/splashBackground</item>
     </style>
 
     <style name="AppTheme.NoActionBar" parent="Theme.AppCompat.DayNight.NoActionBar">
@@ -15,8 +20,18 @@
         <item name="android:background">@null</item>
     </style>
 
-
+    <!--
+      AND-03: this inherited Theme.SplashScreen but never declared
+      postSplashScreenTheme, so the activity stayed on the splash theme forever
+      after launch instead of swapping to the real app theme. It also had no
+      splash background or icon declared, so the API 31+ system splash fell back
+      to the platform default.
+    -->
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/splashBackground</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
         <item name="android:background">@drawable/splash</item>
     </style>
+
 </resources>

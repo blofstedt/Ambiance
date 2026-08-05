@@ -2,12 +2,30 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>My Google AI Studio App</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#11140F" />
+    <meta
+      name="description"
+      content="Ambient Canvas turns your TV into a piece of art that matches the light in your room."
+    />
+    <title>Ambient Canvas</title>
+    <style>
+      /* Paint black before the bundle parses so the TV never flashes white. */
+      html,
+      body,
+      #root {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background: #000;
+        color: #eae6da;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
+    <noscript>Ambient Canvas requires JavaScript.</noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-

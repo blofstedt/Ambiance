@@ -1,26 +1,83 @@
 apply plugin: 'com.android.application'
 
+/*
+ * BUILD-02: the release build type had minifyEnabled=false, no resource
+ * shrinking, no signing config and a hardcoded versionCode of 1. Nothing
+ * releasable could come out of this module. Signing is driven entirely by
+ * environment variables so no keystore or password is ever committed.
+ */
+def keystorePath = System.getenv("ANDROID_KEYSTORE_PATH")
+def hasReleaseSigning = keystorePath != null && !keystorePath.isEmpty() && file(keystorePath).exists()
+
 android {
     namespace = "com.ambient.canvas.overlay"
     compileSdk = rootProject.ext.compileSdkVersion
+
     defaultConfig {
         applicationId "com.ambient.canvas.overlay"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+
+        // versionCode is supplied by CI (github.run_number). Falls back to 1
+        // for local builds so developers are never blocked.
+        versionCode System.getenv("ANDROID_VERSION_CODE") ? System.getenv("ANDROID_VERSION_CODE").toInteger() : 1
+        versionName System.getenv("ANDROID_VERSION_NAME") ?: "1.0.0"
+
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
              // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+
+    signingConfigs {
+        if (hasReleaseSigning) {
+            release {
+                storeFile file(keystorePath)
+                storePassword System.getenv("ANDROID_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("ANDROID_KEY_ALIAS")
+                keyPassword System.getenv("ANDROID_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            }
         }
+        debug {
+            minifyEnabled false
+            applicationIdSuffix ".debug"
+            versionNameSuffix "-debug"
+        }
+    }
+
+    // BUILD-02: fail fast and loudly rather than silently shipping an
+    // unsigned/debug-signed release artifact.
+    if (!hasReleaseSigning) {
+        gradle.taskGraph.whenReady { graph ->
+            if (graph.hasTask(":app:assembleRelease") || graph.hasTask(":app:bundleRelease")) {
+                logger.warn("WARNING: ANDROID_KEYSTORE_PATH is not set. The release artifact will NOT be signed.")
+            }
+        }
+    }
+
+    packagingOptions {
+        resources {
+            excludes += ['META-INF/*.kotlin_module', 'META-INF/DEPENDENCIES', 'META-INF/LICENSE*']
+        }
+    }
+
+    lint {
+        abortOnError false
+        checkReleaseBuilds true
     }
 }
 
@@ -35,6 +92,7 @@ dependencies {
     implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    implementation "androidx.core:core:$androidxCoreVersion"
     implementation project(':capacitor-android')
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"

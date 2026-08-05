@@ -1,0 +1,123 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    name: Web (typecheck, lint, test, build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      # BUILD-05: strict mode is on; this is a real gate now.
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      # Regression coverage for WEB-05, WEB-07, WEB-10, WEB-12, WEB-15.
+      - name: Unit tests
+        run: npm run test
+
+      - name: Build
+        run: npm run build:only
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-dist
+          path: dist
+          retention-days: 7
+
+  android:
+    name: Android (assemble)
+    runs-on: ubuntu-latest
+    needs: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - run: npm ci
+
+      # BUILD-01: settings.gradle includes :capacitor-cordova-android-plugins,
+      # which does not exist in a fresh clone. `cap sync` generates it. Without
+      # this step Gradle configuration fails before it compiles anything.
+      - name: Build web bundle and sync Capacitor
+        run: npm run android:prepare
+
+      # Per android/BINARY_FREE_SETUP.md the wrapper JAR is intentionally not
+      # committed, so it has to be regenerated before ./gradlew will run.
+      - name: Restore Gradle wrapper
+        run: |
+          cd android
+          if [ ! -f gradle/wrapper/gradle-wrapper.jar ]; then
+            gradle wrapper --gradle-version 8.14.3
+          fi
+
+      - name: Assemble debug
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleDebug
+
+      - name: Unit tests
+        run: |
+          cd android
+          ./gradlew --no-daemon testDebugUnitTest
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: debug-apk
+          path: android/app/build/outputs/apk/debug/*.apk
+          retention-days: 7
+
+  firmware:
+    name: Firmware (compile)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # FW-03 was a compile error that shipped undetected because nothing ever
+      # built the firmware in CI. This job exists so that cannot recur.
+      - name: Install arduino-cli
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh -s -- -b /usr/local/bin
+
+      - name: Install ESP32 core and libraries
+        run: |
+          arduino-cli config init
+          arduino-cli config add board_manager.additional_urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          arduino-cli core update-index
+          arduino-cli core install esp32:esp32
+          arduino-cli lib install "Adafruit TCS34725"
+          arduino-cli lib install "WiFiManager"
+
+      - name: Compile sketch
+        run: |
+          mkdir -p build/ambient_sensor
+          cp firmware/ambient_sensor.ino build/ambient_sensor/
+          arduino-cli compile --fqbn esp32:esp32:esp32 build/ambient_sensor

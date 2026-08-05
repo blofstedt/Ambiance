@@ -1,26 +1,32 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "experimentalDecorators": true,
-    "useDefineForClassFields": false,
+    "useDefineForClassFields": true,
     "module": "ESNext",
-    "lib": [
-      "ES2022",
-      "DOM",
-      "DOM.Iterable"
-    ],
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "skipLibCheck": true,
     "moduleResolution": "bundler",
     "isolatedModules": true,
     "moduleDetection": "force",
-    "allowJs": true,
+    "allowJs": false,
     "jsx": "react-jsx",
+    "types": ["vite/client"],
+
+    "//": "BUILD-05: strict was entirely absent. TvSlider took `any` props, NodeJS.Timeout was used in browser code, and nothing caught the null/undefined paths behind several runtime bugs in this audit.",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": false,
+    "forceConsistentCasingInFileNames": true,
+
     "paths": {
-      "@/*": [
-        "./*"
-      ]
+      "@/*": ["./src/*"]
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
-  }
+  },
+  "include": ["src", "tests", "vite.config.ts", "capacitor.config.ts", "server.ts", "mock"],
+  "exclude": ["node_modules", "dist", "android"]
 }

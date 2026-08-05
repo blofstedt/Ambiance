@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- WEB-16: locally generated replacement for the remote
+       transparenttextures.com "stardust" tile. -->
+  <filter id="grain" x="0" y="0" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency="1.05" numOctaves="2" seed="19" result="n"/>
+    <feColorMatrix in="n" type="saturate" values="0"/>
+    <feComponentTransfer>
+      <feFuncA type="linear" slope="0.55" intercept="0"/>
+    </feComponentTransfer>
+  </filter>
+  <rect width="512" height="512" filter="url(#grain)"/>
+</svg>

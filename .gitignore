@@ -6,3 +6,11 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Capacitor copies the web build in here
+android/app/src/main/assets/public/
+
+# Signing material must never be committed (BUILD-02)
+*.jks
+*.keystore
+keystore.properties

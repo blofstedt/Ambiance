@@ -1,5 +1,10 @@
 ext {
-    minSdkVersion = 24
+    // AND-02: was 24. mipmap-anydpi-v26 defines ic_launcher/ic_launcher_round
+    // ONLY for API 26+, and no density-bucket PNG fallback exists (this repo is
+    // intentionally binary-free). On API 24-25 @mipmap/ic_launcher was therefore
+    // unresolvable at build and runtime. Google TV's floor is well above 24, so
+    // raising minSdk is the correct fix and keeps the repo free of binaries.
+    minSdkVersion = 26
     compileSdkVersion = 36
     targetSdkVersion = 36
     androidxActivityVersion = '1.11.0'

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- WEB-16: locally generated replacement for the remote
+       transparenttextures.com "natural-paper" tile. feTurbulence keeps this
+       under 1KB and stays crisp at any TV resolution. -->
+  <filter id="paper" x="0" y="0" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.62" numOctaves="4" seed="7" result="n"/>
+    <feColorMatrix in="n" type="saturate" values="0"/>
+    <feComponentTransfer>
+      <feFuncA type="linear" slope="0.34" intercept="0"/>
+    </feComponentTransfer>
+  </filter>
+  <rect width="512" height="512" filter="url(#paper)"/>
+</svg>

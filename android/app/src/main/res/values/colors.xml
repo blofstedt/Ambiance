@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  AND-01: styles.xml referenced @color/colorPrimary, colorPrimaryDark and
+  colorAccent, but no colors.xml existed anywhere in the resource tree.
+  aapt2 failed the build. These values are the Ambient Canvas brand palette,
+  matched to the web UI (src/lib/theme.ts) and the launcher foreground vector.
+-->
+<resources>
+    <!-- Brand -->
+    <color name="colorPrimary">#11140F</color>
+    <color name="colorPrimaryDark">#080906</color>
+    <color name="colorAccent">#D4CDA4</color>
+
+    <!-- Supporting palette -->
+    <color name="brandSage">#A3B18A</color>
+    <color name="brandParchment">#EAE6DA</color>
+    <color name="brandSurface">#1A1D14</color>
+    <color name="splashBackground">#000000</color>
+</resources>

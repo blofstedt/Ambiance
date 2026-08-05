@@ -1,0 +1,153 @@
+/**
+ * @file Artwork sources (bundled, curated, local) and rotation index maths.
+ */
+/**
+ * Artwork sources and rotation.
+ */
+
+import type { Artwork, ImageSource } from './types';
+
+/**
+ * WEB-16: every visual asset in this app was remote — artwork from Unsplash,
+ * grain and paper textures from transparenttextures.com, fonts from Google
+ * Fonts. On a TV whose WAN link is down (or behind a captive portal, or simply
+ * slow to come up at boot) the app rendered a black screen with a clock. For an
+ * appliance whose entire job is to display a picture, that is a total failure
+ * mode triggered by an entirely ordinary condition.
+ *
+ * Textures and fonts are now bundled (see src/assets and index.css). Remote
+ * artwork is kept, but `local: false` marks it as network-dependent, and
+ * BUNDLED_ARTWORK below always renders regardless of connectivity.
+ */
+export const BUNDLED_ARTWORK: Artwork[] = [
+  {
+    id: 'gradient-dawn',
+    title: 'Dawn Field',
+    artist: 'Ambient Canvas',
+    url: new URL('../assets/art/dawn-field.svg', import.meta.url).href,
+    local: true,
+  },
+  {
+    id: 'gradient-dusk',
+    title: 'Dusk Ridge',
+    artist: 'Ambient Canvas',
+    url: new URL('../assets/art/dusk-ridge.svg', import.meta.url).href,
+    local: true,
+  },
+  {
+    id: 'gradient-still',
+    title: 'Still Water',
+    artist: 'Ambient Canvas',
+    url: new URL('../assets/art/still-water.svg', import.meta.url).href,
+    local: true,
+  },
+];
+
+export const CURATED_ARTWORK: Artwork[] = [
+  {
+    id: 'starry-night',
+    title: 'The Starry Night',
+    artist: 'Vincent van Gogh',
+    url: 'https://images.unsplash.com/photo-1541963463532-d68292c34b19?auto=format&fit=crop&q=80&w=1920',
+  },
+  {
+    id: 'impression-sunrise',
+    title: 'Impression, Sunrise',
+    artist: 'Claude Monet',
+    url: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?auto=format&fit=crop&q=80&w=1920',
+  },
+  {
+    id: 'great-wave',
+    title: 'The Great Wave',
+    artist: 'Hokusai',
+    url: 'https://images.unsplash.com/photo-1549490349-8643362247b5?auto=format&fit=crop&q=80&w=1920',
+  },
+  {
+    id: 'wanderer',
+    title: 'Wanderer above the Sea of Fog',
+    artist: 'Caspar David Friedrich',
+    url: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&q=80&w=1920',
+  },
+  {
+    id: 'view-of-delft',
+    title: 'View of Delft',
+    artist: 'Johannes Vermeer',
+    url: 'https://images.unsplash.com/photo-1582555172866-f73bb12a2ab3?auto=format&fit=crop&q=80&w=1920',
+  },
+  ...BUNDLED_ARTWORK,
+];
+
+/**
+ * WEB-07: index arithmetic was hardcoded to ARTWORK.length (5) in three
+ * separate places — the rotation interval, the ArrowLeft handler and the
+ * ArrowRight handler — while the *rendered* image was chosen with
+ * `localFiles[artIndex % localFiles.length]`. Selecting a local folder of 200
+ * photos therefore cycled the index 0..4 forever and only ever showed the first
+ * five images. Rotation length must come from the active source.
+ */
+export function activeArtwork(source: ImageSource, localFiles: Artwork[]): Artwork[] {
+  if (source === 'local' && localFiles.length > 0) return localFiles;
+  return CURATED_ARTWORK;
+}
+
+export function artworkAt(list: Artwork[], index: number): Artwork | null {
+  if (list.length === 0) return null;
+  const safe = ((index % list.length) + list.length) % list.length;
+  return list[safe] ?? null;
+}
+
+export function nextIndex(current: number, length: number): number {
+  if (length <= 0) return 0;
+  return (current + 1) % length;
+}
+
+export function previousIndex(current: number, length: number): number {
+  if (length <= 0) return 0;
+  return (current - 1 + length) % length;
+}
+
+/**
+ * WEB-09: handleLocalFileSelect created an object URL per file and never
+ * revoked any of them, so re-picking a folder leaked the entire previous set
+ * for the lifetime of the app. Blob URLs are also scoped to the document, so
+ * they died on reload while `imageSource: 'local'` persisted — the app came
+ * back up in local mode pointing at URLs that no longer resolved, showing
+ * nothing at all.
+ */
+export class LocalMediaLibrary {
+  private urls: string[] = [];
+
+  /** Replaces the current set, revoking the previous one. */
+  replace(files: File[]): Artwork[] {
+    this.revokeAll();
+
+    const images = files.filter((file) => file.type.startsWith('image/'));
+    // Stable, human-meaningful ordering rather than filesystem order.
+    images.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+
+    const artwork = images.map((file, index) => {
+      const url = URL.createObjectURL(file);
+      this.urls.push(url);
+      return {
+        id: `local-${index}-${file.name}`,
+        title: file.name.replace(/\.[^.]+$/, ''),
+        artist: `Local media ${index + 1} of ${images.length}`,
+        url,
+        local: true,
+      } satisfies Artwork;
+    });
+
+    return artwork;
+  }
+
+  revokeAll(): void {
+    for (const url of this.urls) {
+      try {
+        URL.revokeObjectURL(url);
+      } catch {
+        /* already revoked */
+      }
+    }
+    this.urls = [];
+  }
+}

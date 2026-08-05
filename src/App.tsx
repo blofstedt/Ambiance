@@ -1,1163 +1,260 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Activity, Eye, EyeOff, Image as ImageIcon, ChevronLeft, ChevronRight, Settings, Clock, Cloud, FolderOpen, Power, MonitorPlay, LayoutTemplate, Sun, CloudRain, CloudFog, CloudSnow, CloudLightning, CheckCircle2, Search, Loader2, Info } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+/**
+ * @file Composition root: wires hooks to components. Start here for "how it fits together".
+ */
 
-// Art Collection
-const ARTWORK = [
-  { id: 1, title: "The Starry Night", artist: "Vincent van Gogh", url: "https://images.unsplash.com/photo-1541963463532-d68292c34b19?auto=format&fit=crop&q=80&w=1920" },
-  { id: 2, title: "Impression, Sunrise", artist: "Claude Monet", url: "https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?auto=format&fit=crop&q=80&w=1920" },
-  { id: 3, title: "The Great Wave", artist: "Hokusai", url: "https://images.unsplash.com/photo-1549490349-8643362247b5?auto=format&fit=crop&q=80&w=1920" },
-  { id: 4, title: "Wanderer above the Sea of Fog", artist: "Caspar David Friedrich", url: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&q=80&w=1920" },
-  { id: 5, title: "View of Delft", artist: "Johannes Vermeer", url: "https://images.unsplash.com/photo-1582555172866-f73bb12a2ab3?auto=format&fit=crop&q=80&w=1920" }
-];
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { Settings as SettingsIcon } from 'lucide-react';
 
-interface RoomProfile {
-  luminance: number;
-  warmth: number;
-}
-
-interface SensorInfo {
-  name: string;
-  ip: string;
-  hostname?: string;
-  lastSeen: number;
-  pairedTvId?: string;
-}
-
-type PendingRenameQueue = Record<string, string>;
-
-type PairSensorResult = 'paired' | 'already_paired_elsewhere' | 'reachable_but_unpaired_endpoint' | 'unreachable';
-
-const SettingTooltip = ({ text }: { text: string }) => (
-  <div className="relative inline-flex items-center group">
-    <span
-      tabIndex={0}
-      className="inline-flex items-center justify-center w-[1vw] h-[1vw] rounded-full bg-[#D4CDA4]/12 border border-[#D4CDA4]/35 text-[#D4CDA4] cursor-help focus:outline-none focus:ring-[0.15vw] focus:ring-[#D4CDA4]/60"
-      aria-label="Setting help"
-    >
-      <Info className="w-[0.58vw] h-[0.58vw]" />
-    </span>
-    <div className="pointer-events-none absolute z-50 left-1/2 -translate-x-1/2 top-[1.4vw] w-[18vw] bg-black/90 border border-white/20 rounded-[0.5vw] px-[0.6vw] py-[0.45vw] text-[0.6vw] uppercase tracking-[0.12em] text-white/80 leading-relaxed opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
-      {text}
-    </div>
-  </div>
-);
-
-const TvSlider = ({ label, tooltip, value, min, max, step, suffix, onChange, onSave, gradientClasses, thumbColor, thumbLeftCalc }: any) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  return (
-    <div className="space-y-[0.5vw]">
-      <div className="flex justify-between items-center text-[0.8vw] uppercase tracking-[0.3em] text-white/50 font-bold">
-        <span className="flex items-center gap-[0.35vw]">{label} {tooltip ? <SettingTooltip text={tooltip} /> : null} {isEditing && <span className="text-white animate-pulse ml-2">(EDIT)</span>}</span>
-        <span className="text-[#A3B18A] font-mono text-[0.9vw]">{value}{suffix}</span>
-      </div>
-      <div 
-        ref={containerRef}
-        tabIndex={0}
-        className={`relative h-[1vw] flex items-center rounded-full transition-all cursor-pointer outline-none select-none ${isEditing ? 'ring-[0.2vw] ring-white scale-[1.02]' : 'focus:ring-[0.2vw] focus:ring-[#D4CDA4]/70'}`}
-        onClick={() => {
-          if (!isEditing) {
-            setIsEditing(true);
-            containerRef.current?.focus();
-          }
-        }}
-        onBlur={() => {
-          setIsEditing(false);
-          if (onSave) onSave(value);
-        }}
-        onKeyDown={(e) => {
-          if (!isEditing) {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              e.stopPropagation();
-              setIsEditing(true);
-            }
-          } else {
-            if (e.key === 'Escape' || e.key === 'Enter' || e.key === 'Backspace') {
-              e.preventDefault();
-              e.stopPropagation();
-              setIsEditing(false);
-              if (onSave) onSave(value);
-            } else if (e.key === 'ArrowLeft') {
-              e.preventDefault();
-              e.stopPropagation();
-              onChange(Math.max(min, value - step));
-            } else if (e.key === 'ArrowRight') {
-              e.preventDefault();
-              e.stopPropagation();
-              onChange(Math.min(max, value + step));
-            } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-              // Prevent losing focus accidentally while editing
-              e.preventDefault();
-              e.stopPropagation();
-            }
-          }
-        }}
-      >
-        <div className={`w-full h-[0.6vw] rounded-full relative ${gradientClasses}`}>
-          <div 
-            className="absolute top-1/2 -translate-y-1/2 w-[1.2vw] h-[1.2vw] rounded-full border-[0.2vw] border-[#1A1D14] transition-all duration-200 pointer-events-none" 
-            style={{ 
-              backgroundColor: thumbColor,
-              left: thumbLeftCalc || `calc(${((value - min) / (max - min)) * 100}% - 0.6vw)` 
-            }} 
-          />
-        </div>
-      </div>
-    </div>
-  );
-};
+import { ArtworkCanvas } from './components/ArtworkCanvas';
+import { Dialog, useDialog } from './components/Dialog';
+import { Overlays } from './components/Overlays';
+import { SettingsPanel } from './components/SettingsPanel';
+import { useArtRotation } from './hooks/useArtRotation';
+import { useDisplayState } from './hooks/useDisplayState';
+import { useDreamPublisher } from './hooks/useDreamPublisher';
+import { useSensorNetwork } from './hooks/useSensorNetwork';
+import { useSettings } from './hooks/useSettings';
+import { useTvInput, closeMenuWithHistory } from './hooks/useTvInput';
+import { useWeather } from './hooks/useWeather';
+import { DEFAULT_ADMIN_USER } from './lib/sensor-utils';
 
 export default function App() {
-  const WEATHER_DISABLED_LABEL = 'Weather Off';
-  const WEATHER_LOCATING_LABEL = 'Locating...';
+  const { settings, set: setSetting } = useSettings();
+  const [showSettings, setShowSettings] = useState(false);
 
-  // Telemetry & Discovery (Multiple Sensors)
-  const [sensors, setSensors] = useState<Record<string, SensorInfo>>(() => {
-    try {
-      const saved = localStorage.getItem('ambient_sensors_v2');
-      return saved ? JSON.parse(saved) : {};
-    } catch { return {}; }
+  const dialog = useDialog();
+  const network = useSensorNetwork();
+  const weather = useWeather(settings.showWeather);
+
+  const connected = network.connection === 'connected';
+
+  const display = useDisplayState({
+    telemetry: network.telemetry,
+    settings,
+    settingsOpen: showSettings,
+    connected,
   });
-  const [pendingRenames, setPendingRenames] = useState<PendingRenameQueue>(() => {
-    try {
-      const saved = localStorage.getItem('ambient_pending_renames_v1');
-      return saved ? JSON.parse(saved) : {};
-    } catch { return {}; }
+
+  const art = useArtRotation({
+    source: settings.imageSource,
+    rotationMinutes: settings.rotationMinutes,
+    isStatic: settings.isStatic,
+    paused: showSettings,
   });
-  const [selectedSensorId, setSelectedSensorId] = useState<string>(() => localStorage.getItem('selected_sensor_id_v2') || '');
-  const [telemetry, setTelemetry] = useState({ lux: 15, temp: 2800, motion: true });
-  const [tvId] = useState<string>(() => {
-    const key = 'ambient_tv_id_v1';
-    const existing = localStorage.getItem(key);
-    if (existing) return existing;
-    const generated = (globalThis.crypto?.randomUUID?.() || `tv-${Date.now()}`);
-    localStorage.setItem(key, generated);
-    return generated;
-  });
-  const [isScanning, setIsScanning] = useState(true);
-  const [discoveryState, setDiscoveryState] = useState<'searching' | 'connected' | 'lost'>('searching');
-  
-  // Gallery State
-  const [artIndex, setArtIndex] = useState(0);
-  const [showSettingsMenu, setShowSettingsMenu] = useState(false);
-  const [isScreenBlack, setIsScreenBlack] = useState(false);
-  const [uiVisible, setUiVisible] = useState(true);
-  const [isStatic, setIsStatic] = useState(false);
-  const [rotationInterval, setRotationInterval] = useState(10); // in minutes
-
-  // Power & Motion Settings
-  const [powerSafeAction, setPowerSafeAction] = useState<'black' | 'off'>('black');
-  const [powerSafeMinutes, setPowerSafeMinutes] = useState(2);
-  const [motionSensitivity, setMotionSensitivity] = useState(3); // Consecutive samples needed
-  const [oledSaverMinutes, setOledSaverMinutes] = useState<number>(() => {
-    const saved = localStorage.getItem('ambient_oled_saver_minutes_v1');
-    return saved ? parseInt(saved, 10) : 10;
-  });
-  const [isOledDimmed, setIsOledDimmed] = useState(false);
-  const [blackModeEnabled, setBlackModeEnabled] = useState<boolean>(() => {
-    const saved = localStorage.getItem('ambient_black_mode_v1');
-    return saved === 'true';
-  });
-  const [blackModeThreshold, setBlackModeThreshold] = useState<number>(() => {
-    const saved = localStorage.getItem('ambient_black_mode_threshold_v1');
-    return saved ? parseInt(saved) : 5;
-  });
-  const motionHistoryRef = useRef<boolean[]>([]);
-
-  // Persistence
-  useEffect(() => {
-    localStorage.setItem('ambient_black_mode_v1', String(blackModeEnabled));
-  }, [blackModeEnabled]);
-
-  useEffect(() => {
-    localStorage.setItem('ambient_black_mode_threshold_v1', String(blackModeThreshold));
-  }, [blackModeThreshold]);
-
-  useEffect(() => {
-    localStorage.setItem('ambient_oled_saver_minutes_v1', String(oledSaverMinutes));
-  }, [oledSaverMinutes]);
-
-  // UI Overlays & Sources
-  const [showClock, setShowClock] = useState(true);
-  const [showWeather, setShowWeather] = useState<boolean>(() => {
-    const saved = localStorage.getItem('ambient_show_weather_v1');
-    return saved === 'true';
-  });
-  const [weatherLocation, setWeatherLocation] = useState(WEATHER_DISABLED_LABEL);
-  const [weatherTemp, setWeatherTemp] = useState<number | null>(null);
-  const [weatherCode, setWeatherCode] = useState<number>(0);
-  const [imageSource, setImageSource] = useState<'curated' | 'local'>('curated');
-  
-  // Custom Media Sources
-  const [localFiles, setLocalFiles] = useState<string[]>([]);
-
-  const [time, setTime] = useState(new Date());
-  const [overlayFont, setOverlayFont] = useState<string>(() => localStorage.getItem('ambient_overlay_font_v1') || 'serif');
-  const overlayFontClass = overlayFont === 'serif' ? 'font-serif' : overlayFont === 'mono' ? 'font-mono' : overlayFont === 'sans' ? 'font-sans' : '';
-  const overlayScriptStyle = overlayFont === 'script' ? { fontFamily: 'cursive' } : undefined;
-
-  const shortLocationName = (city?: string, subdivision?: string, countryCode?: string) => {
-    const primary = (city || '').trim();
-    const secondary = (subdivision || countryCode || '').trim();
-    const full = [primary, secondary].filter(Boolean).join(', ');
-    if (!full) return 'Unknown Location';
-    if (full.length <= 22) return full;
-    return `${full.slice(0, 21).trimEnd()}…`;
-  };
-
-  const requestWeatherPermission = async (): Promise<boolean> => {
-    if (!("geolocation" in navigator)) {
-      setWeatherLocation("Location Unavailable");
-      return false;
-    }
-
-    return new Promise((resolve) => {
-      navigator.geolocation.getCurrentPosition(
-        () => resolve(true),
-        () => resolve(false),
-        { enableHighAccuracy: false, timeout: 7000, maximumAge: 60_000 }
-      );
-    });
-  };
-
-  const fetchWeather = async () => {
-    try {
-      if (!("geolocation" in navigator)) {
-        setWeatherLocation("Location Unavailable");
-        setWeatherTemp(null);
-        return;
-      }
-
-      navigator.geolocation.getCurrentPosition(async (position) => {
-        const lat = position.coords.latitude;
-        const lon = position.coords.longitude;
-        
-        try {
-          const geoRes = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`);
-          const geoData = await geoRes.json();
-          if (geoData.city || geoData.locality) {
-            setWeatherLocation(shortLocationName(geoData.city || geoData.locality, geoData.principalSubdivisionCode || geoData.principalSubdivision, geoData.countryCode));
-          } else {
-            setWeatherLocation('Unknown Location');
-          }
-        } catch {
-          setWeatherLocation('Location Found');
-        }
-
-        const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&temperature_unit=celsius`);
-        const data = await weatherRes.json();
-        setWeatherTemp(Math.round(data.current_weather.temperature));
-        setWeatherCode(data.current_weather.weathercode);
-      }, () => {
-        setWeatherLocation("Location Access Denied");
-        setWeatherTemp(null);
-      }, { enableHighAccuracy: false, timeout: 7000, maximumAge: 60_000 });
-    } catch (e) {
-      console.error("Weather fetch error", e);
-    }
-  };
-
-  useEffect(() => {
-    localStorage.setItem('ambient_show_weather_v1', String(showWeather));
-    if (!showWeather) {
-      setWeatherTemp(null);
-      setWeatherLocation(WEATHER_DISABLED_LABEL);
-      return;
-    }
-    setWeatherLocation(WEATHER_LOCATING_LABEL);
-    fetchWeather();
-    const interval = setInterval(fetchWeather, 15 * 60 * 1000); // refresh every 15 min
-    return () => clearInterval(interval);
-  }, [showWeather]);
-
-  useEffect(() => {
-    const timer = setInterval(() => setTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-  useEffect(() => {
-    localStorage.setItem('ambient_overlay_font_v1', overlayFont);
-  }, [overlayFont]);
-
-  const motionTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const uiTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const menuTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const ignoreNextPopStateRef = useRef(false);
-
-  // Appearance Settings
-  const [grainIntensity, setGrainIntensity] = useState(45);
-  const [luminance, setLuminance] = useState(60);
-  const [warmth, setWarmth] = useState(200);
-
-  const getWeatherIcon = (code: number) => {
-    if (code === 0) return <Sun className="w-10 h-10 opacity-90 text-[#D4CDA4]" />;
-    if (code < 4) return <Cloud className="w-10 h-10 opacity-90 text-[#D4CDA4]" />;
-    if (code < 50) return <CloudFog className="w-10 h-10 opacity-90 text-[#D4CDA4]" />;
-    if (code < 70 || (code >= 80 && code <= 82)) return <CloudRain className="w-10 h-10 opacity-90 text-[#D4CDA4]" />;
-    if (code < 80 || code >= 85) return <CloudSnow className="w-10 h-10 opacity-90 text-[#D4CDA4]" />;
-    return <CloudLightning className="w-10 h-10 opacity-90 text-[#D4CDA4]" />;
-  };
-
-  const saveSensors = (updatedSensors: Record<string, SensorInfo>) => {
-    setSensors(updatedSensors);
-    localStorage.setItem('ambient_sensors_v2', JSON.stringify(updatedSensors));
-  };
-
-  const savePendingRenames = (queue: PendingRenameQueue) => {
-    setPendingRenames(queue);
-    localStorage.setItem('ambient_pending_renames_v1', JSON.stringify(queue));
-  };
-
-  const getSensorTargets = (sensor: SensorInfo) => {
-    const targets = new Set<string>();
-    if (sensor.ip) targets.add(sensor.ip);
-    if (sensor.hostname) {
-      targets.add(sensor.hostname);
-      targets.add(`${sensor.hostname}.local`);
-    }
-    return Array.from(targets);
-  };
-
-  const fetchSensorJson = async (sensor: SensorInfo, timeoutMs = 1500) => {
-    const targets = getSensorTargets(sensor);
-    for (const target of targets) {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-        const res = await fetch(`http://${target}/`, { signal: controller.signal });
-        clearTimeout(timeoutId);
-        if (!res.ok) continue;
-        const data = await res.json();
-        return { data, target };
-      } catch {
-        // try next target
-      }
-    }
-    return null;
-  };
-
-  const pairSensor = async (sensor: SensorInfo): Promise<PairSensorResult> => {
-    for (const target of getSensorTargets(sensor)) {
-      try {
-        const res = await fetch(`http://${target}/api/pair`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ tvId })
-        });
-        if (res.ok) return 'paired';
-        if (res.status === 409) return 'already_paired_elsewhere';
-
-        // If firmware doesn't support pairing endpoint, continue gracefully.
-        if (res.status === 404 || res.status === 405) {
-          const probe = await fetch(`http://${target}/`);
-          if (probe.ok) return 'reachable_but_unpaired_endpoint';
-        }
-      } catch {
-        // try next target
-      }
-    }
-    return 'unreachable';
-  };
-
-  const normalizeSensorName = (name: string) => {
-    const cleaned = name.trim().replace(/\s+/g, ' ').slice(0, 24);
-    if (!cleaned) return '';
-    return `${cleaned} - ambient tv sensor`;
-  };
-
-  const updateSensorName = async (sensorId: string, newNameRaw: string) => {
-    const sensor = sensors[sensorId];
-    if (!sensor) return;
-
-    const formattedName = normalizeSensorName(newNameRaw);
-    if (!formattedName) {
-      alert('Please enter a valid sensor name.');
-      return;
-    }
-
-    const optimisticSensors = { ...sensors, [sensorId]: { ...sensor, name: formattedName, lastSeen: Date.now() } };
-    saveSensors(optimisticSensors);
-
-    try {
-      let renameOk = false;
-      for (const target of getSensorTargets(sensor)) {
-        const res = await fetch(`http://${target}/api/name`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: formattedName })
-        });
-        if (res.ok) {
-          renameOk = true;
-          break;
-        }
-      }
-      if (!renameOk) throw new Error('rename failed');
-      const queue = { ...pendingRenames };
-      delete queue[sensorId];
-      savePendingRenames(queue);
-    } catch (e) {
-      savePendingRenames({ ...pendingRenames, [sensorId]: formattedName });
-    }
-  };
-
-  const flushPendingRename = async (sensorId: string) => {
-    const sensor = sensors[sensorId];
-    const pendingName = pendingRenames[sensorId];
-    if (!sensor || !pendingName) return;
-
-    try {
-      let renameOk = false;
-      for (const target of getSensorTargets(sensor)) {
-        const res = await fetch(`http://${target}/api/name`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: pendingName })
-        });
-        if (res.ok) {
-          renameOk = true;
-          break;
-        }
-      }
-      if (!renameOk) return;
-      const queue = { ...pendingRenames };
-      delete queue[sensorId];
-      savePendingRenames(queue);
-    } catch {
-      // keep queued
-    }
-  };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const handleLocalFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []) as File[];
-    const urls = files.filter(f => f.type.startsWith('image/')).map(f => URL.createObjectURL(f));
-    if (urls.length > 0) {
-      setLocalFiles(urls);
-      setImageSource('local');
-      setArtIndex(0);
-      resetMenuTimer();
-    }
-  };
-  
-  // Load user-defined profiles from storage
-  const [profiles, setProfiles] = useState<Record<string, RoomProfile>>(() => {
-    try {
-      const saved = localStorage.getItem('canvas_profiles');
-      return saved ? JSON.parse(saved) : {};
-    } catch { return {}; }
+
+  const closeSettings = useCallback(() => closeMenuWithHistory(setShowSettings), []);
+  const openSettings = useCallback(() => setShowSettings(true), []);
+
+  const { uiVisible, keepMenuAlive } = useTvInput({
+    menuOpen: showSettings,
+    dialogOpen: dialog.request !== null,
+    onCloseMenu: closeSettings,
+    onOpenMenu: openSettings,
+    onPrevious: art.previous,
+    onNext: art.next,
   });
 
-  const luxBucket = Math.floor(telemetry.lux / 20) * 20;
-  const tempBucket = Math.floor(telemetry.temp / 500) * 500;
-  const currentBucketKey = `${luxBucket}_${tempBucket}`;
+  /* --------------------------------------------------------- local media I/O */
 
-  const getInnateProfile = (lux: number, k: number): RoomProfile => {
-    let lum = 60;
-    let w = 200;
+  const handleLocalFileSelect = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const files = Array.from(event.target.files ?? []);
+      const count = art.loadLocalFiles(files);
 
-    if (lux < 5) { lum = 25; w = 450; } 
-    else if (lux < 20) { lum = 40; w = 350; } 
-    else if (lux > 150) { lum = 90; w = 50; } 
-
-    if (k < 2500) w += 100;
-    if (k > 4000) w -= 100;
-
-    return { 
-      luminance: Math.min(100, Math.max(0, lum)), 
-      warmth: Math.min(500, Math.max(-500, w)) 
-    };
-  };
-
-  useEffect(() => {
-    if (isScanning) {
-      setDiscoveryState('searching');
-      const scanNetwork = async () => {
-        const sensorList = Object.values(sensors) as SensorInfo[];
-        const knownSubnets = sensorList
-          .map((sensor) => sensor.ip.split('.').slice(0, 3).join('.'))
-          .filter((subnet) => subnet.split('.').length === 3);
-        const knownTargets = new Set<string>();
-        sensorList.forEach((sensor) => {
-          getSensorTargets(sensor).forEach((target) => knownTargets.add(target));
-        });
-        const fallbackSubnets = ['192.168.1', '192.168.0', '192.168.4', '192.168.86', '192.168.68', '192.168.50', '10.0.0', '192.168.254'];
-        const subnets = [...new Set([...knownSubnets, ...fallbackSubnets])];
-        const newSensors = { ...sensors };
-        let foundAny = false;
-
-        const testTarget = async (target: string) => {
-          try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 1200);
-            const res = await fetch(`http://${target}/api/status`, { signal: controller.signal });
-            clearTimeout(timeoutId);
-            
-            if (res.ok) {
-              const data = await res.json();
-              if (data.id) {
-                const existingSensor = newSensors[data.id];
-                const ipMatch = target.match(/^(\d{1,3}\.){3}\d{1,3}$/) ? target : (existingSensor?.ip || '');
-                newSensors[data.id] = {
-                  name: data.name || 'Unknown Sensor',
-                  ip: ipMatch,
-                  hostname: data.hostname || existingSensor?.hostname,
-                  lastSeen: Date.now(),
-                  pairedTvId: data.pairedTvId || existingSensor?.pairedTvId
-                };
-                foundAny = true;
-              }
-            }
-          } catch (e) {
-            // Ignore timeout or network errors
-          }
-        };
-
-        await Promise.all(Array.from(knownTargets).map((target) => testTarget(target)));
-
-        const batchSize = 32;
-        for (const subnet of subnets) {
-          let i = 1;
-          while (i < 255) {
-            const batch = [];
-            for (let b = 0; b < batchSize && i < 255; b++, i++) {
-              batch.push(testTarget(`${subnet}.${i}`));
-            }
-            await Promise.all(batch);
-          }
-        }
-
-        if (foundAny) {
-          saveSensors(newSensors);
-          if (!selectedSensorId) {
-            const firstId = Object.keys(newSensors)[0];
-            setSelectedSensorId(firstId);
-            localStorage.setItem('selected_sensor_id_v2', firstId);
-          }
-          setDiscoveryState('connected');
-        } else {
-          setDiscoveryState('lost');
-        }
-        setIsScanning(false);
-      };
-
-      scanNetwork();
-    }
-  }, [isScanning, sensors, selectedSensorId]);
-
-  useEffect(() => {
-    if (isScanning) return;
-    const shouldRetryDiscovery = !selectedSensorId || discoveryState === 'lost';
-    if (!shouldRetryDiscovery) return;
-    const retryTimer = setTimeout(() => setIsScanning(true), 30000);
-    return () => clearTimeout(retryTimer);
-  }, [isScanning, selectedSensorId, discoveryState]);
-
-  const isFetchingRef = useRef(false);
-
-  useEffect(() => {
-    if (!selectedSensorId || !sensors[selectedSensorId]) return;
-
-    const fetchTelemetry = async () => {
-      if (isFetchingRef.current) return;
-      isFetchingRef.current = true;
-      
-      try {
-        const sensor = sensors[selectedSensorId];
-        const result = await fetchSensorJson(sensor, 800);
-        if (result) {
-          const { data, target } = result;
-          if (typeof data.lux === 'number' && typeof data.temp === 'number' && typeof data.motion === 'boolean') {
-            setTelemetry(data);
-          }
-          if (data.id) {
-            const existing = sensors[data.id];
-            if (existing) {
-              const ipMatch = target.match(/^(\d{1,3}\.){3}\d{1,3}$/) ? target : existing.ip;
-              const updated = {
-                ...sensors,
-                [data.id]: {
-                  ...existing,
-                  ip: ipMatch,
-                  hostname: data.hostname || existing.hostname,
-                  name: data.name || existing.name,
-                  lastSeen: Date.now(),
-                  pairedTvId: data.pairedTvId || existing?.pairedTvId
-                }
-              };
-              saveSensors(updated);
-            }
-          }
-          setDiscoveryState('connected');
-          flushPendingRename(selectedSensorId);
-        } else {
-          setDiscoveryState('lost');
-        }
-      } catch (e) {
-        setDiscoveryState('lost');
-      } finally {
-        isFetchingRef.current = false;
-      }
-    };
-
-    const interval = setInterval(fetchTelemetry, 250);
-    return () => clearInterval(interval);
-  }, [selectedSensorId, sensors]);
-
-  useEffect(() => {
-    if (isStatic) return;
-    
-    const rotation = setInterval(() => {
-      if (!showSettingsMenu) setArtIndex(prev => (prev + 1) % ARTWORK.length);
-    }, rotationInterval * 60000);
-    return () => clearInterval(rotation);
-  }, [showSettingsMenu, isStatic, rotationInterval]);
-
-  useEffect(() => {
-    motionHistoryRef.current = [...motionHistoryRef.current.slice(-(motionSensitivity - 1)), telemetry.motion];
-    const hasSustainedMotion = motionHistoryRef.current.length >= motionSensitivity && 
-                                motionHistoryRef.current.every(m => m === true);
-
-    // Black Mode Logic: If lux is below threshold and Black Mode is enabled, stay black regardless of motion.
-    const isBelowLuxThreshold = blackModeEnabled && telemetry.lux <= blackModeThreshold;
-
-    if (isBelowLuxThreshold) {
-      setIsScreenBlack(true);
-      if (motionTimerRef.current) {
-        clearTimeout(motionTimerRef.current);
-        motionTimerRef.current = null;
-      }
-      return;
-    }
-
-    if (hasSustainedMotion) {
-      setIsScreenBlack(false);
-      if (motionTimerRef.current) clearTimeout(motionTimerRef.current);
-    } else {
-      const hasLostMotion = motionHistoryRef.current.every(m => m === false);
-      if (hasLostMotion && !isScreenBlack && !motionTimerRef.current) {
-        motionTimerRef.current = setTimeout(() => {
-          setIsScreenBlack(true);
-          motionTimerRef.current = null;
-        }, powerSafeMinutes * 60000); 
-      }
-    }
-  }, [telemetry.motion, telemetry.lux, isScreenBlack, motionSensitivity, powerSafeMinutes, blackModeEnabled, blackModeThreshold]);
-
-  useEffect(() => {
-    const userProfile = profiles[currentBucketKey];
-    if (userProfile) {
-      setLuminance(userProfile.luminance);
-      setWarmth(userProfile.warmth);
-    } else {
-      const innate = getInnateProfile(telemetry.lux, telemetry.temp);
-      setLuminance(innate.luminance);
-      setWarmth(innate.warmth);
-    }
-  }, [currentBucketKey, profiles, telemetry.lux, telemetry.temp]);
-
-  const saveProfile = (newLum: number, newWarmth: number) => {
-    const updated = {
-      ...profiles,
-      [currentBucketKey]: { luminance: newLum, warmth: newWarmth }
-    };
-    setProfiles(updated);
-    localStorage.setItem('canvas_profiles', JSON.stringify(updated));
-    resetMenuTimer();
-  };
-
-  const resetUiTimer = () => {
-    setUiVisible(true);
-    if (uiTimerRef.current) clearTimeout(uiTimerRef.current);
-    uiTimerRef.current = setTimeout(() => {
-      setUiVisible(false);
-    }, 5000);
-  };
-
-  const resetMenuTimer = () => {
-    if (showSettingsMenu) {
-      if (menuTimerRef.current) clearTimeout(menuTimerRef.current);
-      menuTimerRef.current = setTimeout(() => {
-        closeSettingsMenu();
-      }, 10000);
-    }
-  };
-
-  const closeSettingsMenu = (syncHistory = true) => {
-    setShowSettingsMenu(false);
-    if (syncHistory && window.history.state?.ambientSettings) {
-      ignoreNextPopStateRef.current = true;
-      window.history.back();
-    }
-  };
-
-  useEffect(() => {
-    const onPopState = () => {
-      if (ignoreNextPopStateRef.current) {
-        ignoreNextPopStateRef.current = false;
+      if (count === 0) {
+        dialog.notify(
+          'No images found',
+          'That folder did not contain any image files the TV can display.',
+        );
         return;
       }
-      if (showSettingsMenu) {
-        closeSettingsMenu(false);
-      }
-    };
-    window.addEventListener('popstate', onPopState);
-    return () => window.removeEventListener('popstate', onPopState);
-  }, [showSettingsMenu]);
 
-  useEffect(() => {
-    const handleActivity = (e?: KeyboardEvent) => {
-      resetUiTimer();
-      if (showSettingsMenu) resetMenuTimer();
-      const targetElement = e?.target as HTMLElement | null;
-      const isTypingTarget = !!targetElement && (
-        targetElement.tagName === 'INPUT' ||
-        targetElement.tagName === 'TEXTAREA' ||
-        targetElement.isContentEditable
+      setSetting('imageSource', 'local');
+      // Allow re-selecting the same folder later.
+      event.target.value = '';
+    },
+    [art, dialog, setSetting],
+  );
+
+  /* ------------------------------------------------------------------ weather */
+
+  const handleToggleWeather = useCallback(async () => {
+    if (settings.showWeather) {
+      setSetting('showWeather', false);
+      return;
+    }
+
+    const allowed = await weather.requestPermission();
+    if (!allowed) {
+      setSetting('showWeather', false);
+      dialog.notify(
+        'Location needed',
+        'Weather needs location permission. Enable location for Ambient Canvas in Android settings, then try again.',
       );
-      
-      if (!isTypingTarget && (e?.key === 'Escape' || e?.key === 'Backspace' || e?.key === 'BrowserBack')) {
-        if (showSettingsMenu) {
-          e.preventDefault();
-          closeSettingsMenu();
-          return;
-        }
-      }
-      if (!showSettingsMenu && e?.key === 'ArrowLeft') {
-        setArtIndex(prev => (prev - 1 + ARTWORK.length) % ARTWORK.length);
-      } else if (!showSettingsMenu && e?.key === 'ArrowRight') {
-        setArtIndex(prev => (prev + 1) % ARTWORK.length);
-      }
-    };
-
-    window.addEventListener('mousemove', handleActivity);
-    window.addEventListener('keydown', handleActivity as any);
-    window.addEventListener('mousedown', handleActivity);
-    window.addEventListener('touchstart', handleActivity);
-
-    resetUiTimer();
-
-    return () => {
-      window.removeEventListener('mousemove', handleActivity);
-      window.removeEventListener('keydown', handleActivity);
-      window.removeEventListener('mousedown', handleActivity);
-      window.removeEventListener('touchstart', handleActivity);
-    };
-  }, [showSettingsMenu]);
-
-  useEffect(() => {
-    if (showSettingsMenu) {
-      if (!window.history.state?.ambientSettings) {
-        window.history.pushState({ ambientSettings: true }, '');
-      }
-      resetMenuTimer();
-    } else {
-      if (menuTimerRef.current) clearTimeout(menuTimerRef.current);
-    }
-  }, [showSettingsMenu]);
-
-
-  useEffect(() => {
-    if (showSettingsMenu) {
-      setIsOledDimmed(false);
       return;
     }
-    if (telemetry.motion) {
-      setIsOledDimmed(false);
-      return;
-    }
-    const dimTimer = setTimeout(() => setIsOledDimmed(true), oledSaverMinutes * 60000);
-    return () => clearTimeout(dimTimer);
-  }, [telemetry.motion, oledSaverMinutes, showSettingsMenu]);
 
-  // Filter Computation & Media Source Resolution
-  let currentArt = ARTWORK[artIndex % ARTWORK.length];
-  
-  if (imageSource === 'local' && localFiles.length > 0) {
-    currentArt = {
-      id: 999,
-      title: "Local Media",
-      artist: `Folder Item ${artIndex % localFiles.length + 1}`,
-      url: localFiles[artIndex % localFiles.length]
-    };
-  }
+    setSetting('showWeather', true);
+  }, [settings.showWeather, setSetting, weather, dialog]);
 
-  const overlayOpacity = luminance / 100;
-  const warmColor = `rgba(255, ${200 + (warmth/500)*55}, ${150 - (warmth/500)*100}, 0.25)`;
+  /* ------------------------------------------------------------- screensaver */
+
+  useDreamPublisher(
+    useMemo(
+      () => ({
+        telemetry: network.telemetry,
+        luminance: display.luminance,
+        warmth: display.warmth,
+        grainIntensity: settings.grainIntensity,
+        showClock: settings.showClock,
+        showWeather: settings.showWeather,
+        overlayFont: settings.overlayFont,
+        temperatureUnit: settings.temperatureUnit,
+        weatherTemp: weather.temperatureC,
+        weatherCode: weather.code,
+        weatherLocation: weather.label,
+        artworkUrl: art.current?.url ?? null,
+        artworkTitle: art.current?.title ?? null,
+      }),
+      [
+        network.telemetry,
+        display.luminance,
+        display.warmth,
+        settings.grainIntensity,
+        settings.showClock,
+        settings.showWeather,
+        settings.overlayFont,
+        settings.temperatureUnit,
+        weather.temperatureC,
+        weather.code,
+        weather.label,
+        art.current?.url,
+        art.current?.title,
+      ],
+    ),
+  );
+
+  /* ------------------------------------------------------------------- render */
+
+  const sensorPanel = useMemo(
+    () => ({
+      sensors: network.sensors,
+      selectedSensorId: network.selectedSensorId,
+      telemetry: network.telemetry,
+      connection: network.connection,
+      isScanning: network.isScanning,
+      pendingRenames: network.pendingRenames,
+      hasCredentials: network.credentials !== null,
+      onRescan: network.rescan,
+      onSelect: network.selectSensor,
+      onForget: network.forgetSensor,
+      onRename: network.rename,
+      onPair: network.pair,
+      onAddManual: network.addManualSensor,
+      onSetCredentials: (user: string, password: string) =>
+        network.setCredentials({ user: user || DEFAULT_ADMIN_USER, password }),
+      onChangePassword: network.changePassword,
+      showDialog: dialog.show,
+    }),
+    [network, dialog.show],
+  );
 
   return (
-    <div className="w-full h-screen bg-black overflow-hidden flex flex-col font-sans text-[#EAE6DA] relative select-none">
-      <AnimatePresence>
-        <motion.div
-          key={currentArt.id}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 2.5, ease: "easeInOut" }}
-          className="absolute inset-0 z-0"
-        >
-          <div 
-            className="absolute inset-0 bg-center bg-cover transition-[filter] duration-1000"
-            style={{ 
-              backgroundImage: `url(${currentArt.url})`,
-              filter: `brightness(${0.02 + overlayOpacity * 0.98}) contrast(1.1) sepia(0.2)` 
-            }}
-          >
-            <div 
-              className="absolute inset-0 mix-blend-multiply transition-colors duration-1000"
-              style={{ backgroundColor: warmColor, opacity: Math.abs(warmth) / 500 }}
-            />
-            <div 
-              className="absolute inset-0 mix-blend-overlay opacity-30 pointer-events-none"
-              style={{ backgroundImage: "url('https://www.transparenttextures.com/patterns/natural-paper.png')" }}
-            />
-            <div 
-              className="absolute inset-0 mix-blend-soft-light pointer-events-none transition-opacity duration-500"
-              style={{ 
-                backgroundImage: "url('https://www.transparenttextures.com/patterns/stardust.png')",
-                opacity: grainIntensity / 100 * 0.8
-              }}
-            />
-          </div>
-        </motion.div>
-      </AnimatePresence>
-      <div className={`absolute inset-0 z-40 bg-black transition-opacity duration-[3000ms] pointer-events-none ${isScreenBlack ? 'opacity-100' : 'opacity-0'}`} />
-      <div className="absolute inset-0 z-10 pointer-events-none shadow-[inset_0_0_300px_rgba(0,0,0,0.8)]" />
-      <div 
-        className={`absolute top-0 left-0 w-full p-[3vw] flex justify-between items-start z-30 transition-all duration-1000 pointer-events-none ${isScreenBlack ? 'opacity-0' : ''}`}
-        style={{ opacity: isScreenBlack ? 0 : 0.15 + overlayOpacity * 0.85 }}
-      >
-        <div className={`transition-opacity duration-[3000ms] ${showClock ? 'opacity-100' : 'opacity-0'} ${isOledDimmed ? 'opacity-15' : ''}`}>
-          <div className={`text-[5vw] tracking-tighter text-[#EAE6DA] drop-shadow-2xl leading-none ${overlayFontClass}`} style={overlayScriptStyle}>{time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-          <div className={`text-[0.8vw] opacity-80 uppercase tracking-[0.3em] mt-[1vw] drop-shadow-md text-[#A3B18A] font-bold ${overlayFontClass}`} style={overlayScriptStyle}>{time.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })}</div>
-        </div>
-        <div className={`transition-opacity duration-[3000ms] text-right ${showWeather ? 'opacity-100' : 'opacity-0'} ${isOledDimmed ? 'opacity-15' : ''}`}>
-          <div className="flex flex-col items-end gap-[0.6vw]">
-            <div className={`text-[3.4vw] tracking-tighter text-[#EAE6DA] drop-shadow-2xl leading-none ${overlayFontClass}`} style={overlayScriptStyle}>
-              {weatherTemp !== null ? `${weatherTemp}°C` : '--°C'}
-            </div>
-            <div className="scale-[1.1] origin-right h-[3vw] flex items-center justify-end">{getWeatherIcon(weatherCode)}</div>
-          </div>
-          <div className={`text-[0.8vw] opacity-80 uppercase tracking-[0.3em] mt-[1vw] drop-shadow-md text-[#A3B18A] font-bold max-w-[18vw] truncate ${overlayFontClass}`} style={overlayScriptStyle}>{weatherLocation}</div>
-        </div>
-      </div>
-      <div 
-        className={`absolute inset-0 z-50 p-[3vw] flex flex-col justify-center items-center transition-all duration-700 ${
-          showSettingsMenu ? 'opacity-100' : 'opacity-0 pointer-events-none'
+    <div className="relative flex h-screen w-full flex-col overflow-hidden bg-black font-sans text-canvas-parchment select-none">
+      <ArtworkCanvas
+        artwork={art.current}
+        luminance={display.luminance}
+        warmth={display.warmth}
+        grainIntensity={settings.grainIntensity}
+      />
+
+      {/* Power-save blackout */}
+      <div
+        aria-hidden="true"
+        className={`pointer-events-none absolute inset-0 z-40 bg-black transition-opacity duration-[3000ms] ${
+          display.isScreenBlack ? 'opacity-100' : 'opacity-0'
+        }`}
+      />
+
+      {/* Vignette */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 z-10 shadow-[inset_0_0_300px_rgba(0,0,0,0.8)]"
+      />
+
+      <Overlays
+        showClock={settings.showClock}
+        showWeather={settings.showWeather}
+        font={settings.overlayFont}
+        unit={settings.temperatureUnit}
+        weatherTemp={weather.temperatureC}
+        weatherCode={weather.code}
+        weatherLabel={weather.label}
+        connection={network.connection}
+        isScreenBlack={display.isScreenBlack}
+        isOledDimmed={display.isOledDimmed}
+        overlayOpacity={display.luminance / 100}
+      />
+
+      <SettingsPanel
+        open={showSettings}
+        settings={settings}
+        setSetting={setSetting}
+        luminance={display.luminance}
+        warmth={display.warmth}
+        onLuminanceChange={display.setLuminance}
+        onWarmthChange={display.setWarmth}
+        onCommitProfile={display.commitProfile}
+        onInteract={keepMenuAlive}
+        onClose={closeSettings}
+        onPickLocalFolder={() => fileInputRef.current?.click()}
+        localCount={art.localCount}
+        onToggleWeather={() => void handleToggleWeather()}
+        sensorPanel={sensorPanel}
+      />
+
+      {/*
+        Kept outside SettingsPanel so the input survives the panel unmounting
+        (WEB-13) while the native folder picker is open.
+        `webkitdirectory` is absent from React's typings; the cast is deliberate.
+      */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        onChange={handleLocalFileSelect}
+        className="hidden"
+        {...({ webkitdirectory: '' } as Record<string, string>)}
+      />
+
+      <div
+        className={`absolute bottom-[4vw] left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-5 transition-all duration-700 ${
+          showSettings || !uiVisible ? 'pointer-events-none scale-95 opacity-0' : 'opacity-100'
         }`}
       >
-        <div className="w-[65vw] max-w-5xl bg-[#1A1D14]/40 backdrop-blur-md border border-white/10 p-[3vw] rounded-[2vw] shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col gap-[2vw]">
-                     {/* Display & Layout Section */}
-          <div className="space-y-[1vw]">
-            <h3 className="text-[#D4CDA4] text-[0.8vw] uppercase tracking-[0.3em] font-bold border-b border-white/10 pb-[0.5vw]">Display <SettingTooltip text="Picture tuning and overlay controls for the artwork screen." /></h3>
-            <div className="grid grid-cols-4 gap-[2vw]">
-              <TvSlider 
-                label="Brightness" tooltip="Controls artwork brightness after ambient adjustments are applied." value={luminance} min={0} max={100} step={5} suffix="%"
-                onChange={(v: number) => { setLuminance(v); resetMenuTimer(); }}
-                onSave={(v: number) => saveProfile(v, warmth)}
-                gradientClasses="bg-gradient-to-r from-black/50 to-white/50"
-                thumbColor="#D4CDA4"
-              />
-              <TvSlider 
-                label="Temp" tooltip="Warms or cools the image tone to match room lighting." value={warmth} min={-500} max={500} step={50} suffix="K"
-                onChange={(v: number) => { setWarmth(v); resetMenuTimer(); }}
-                onSave={(v: number) => saveProfile(luminance, v)}
-                gradientClasses="bg-gradient-to-r from-blue-400/20 via-white/10 to-orange-400/20"
-                thumbColor="#FFB380"
-                thumbLeftCalc={`calc(${50 + (warmth / 500) * 50}% - 0.6vw)`}
-              />
-              <TvSlider 
-                label="Grain" tooltip="Adds paper-like texture over the artwork." value={grainIntensity} min={0} max={100} step={5} suffix="%"
-                onChange={(v: number) => { setGrainIntensity(v); resetMenuTimer(); }}
-                gradientClasses="bg-gradient-to-r from-transparent to-white/30"
-                thumbColor="#A3B18A"
-              />
-              <div className="flex gap-[1vw]">
-                <button 
-                  onClick={() => { setShowClock(!showClock); resetMenuTimer(); }} 
-                  title="Toggle clock overlay on the artwork screen." className={`flex-1 aspect-square rounded-[1vw] flex flex-col items-center justify-center gap-[0.2vw] border transition-all ${showClock ? 'bg-[#D4CDA4]/10 border-[#D4CDA4] text-[#D4CDA4]' : 'border-white/10 text-white/40 hover:bg-white/5'}`}
-                >
-                  <Clock className="w-[1.2vw] h-[1.2vw]" />
-                  <span className="text-[0.7vw] uppercase tracking-widest font-bold mt-[0.2vw]">Clock</span>
-                </button>
-                <button 
-                  onClick={async () => {
-                    if (showWeather) {
-                      setShowWeather(false);
-                      resetMenuTimer();
-                      return;
-                    }
-                    const allowed = await requestWeatherPermission();
-                    if (!allowed) {
-                      setShowWeather(false);
-                      setWeatherTemp(null);
-                      setWeatherLocation('Location permission required (enable to retry)');
-                      alert('Weather cannot be enabled without location permission.');
-                    } else {
-                      setWeatherLocation(WEATHER_LOCATING_LABEL);
-                      setShowWeather(true);
-                      fetchWeather();
-                    }
-                    resetMenuTimer();
-                  }} 
-                  title="Toggle weather overlay (requires location permission)." className={`flex-1 aspect-square rounded-[1vw] flex flex-col items-center justify-center gap-[0.2vw] border transition-all ${showWeather ? 'bg-[#D4CDA4]/10 border-[#D4CDA4] text-[#D4CDA4]' : 'border-white/10 text-white/40 hover:bg-white/5'}`}
-                >
-                  <Cloud className="w-[1.2vw] h-[1.2vw]" />
-                  <span className="text-[0.7vw] uppercase tracking-widest font-bold mt-[0.2vw]">Weather</span>
-                </button>
-              </div>
-            </div>
-            <div className="flex justify-between items-center bg-white/5 border border-white/10 rounded-[0.8vw] px-[1vw] py-[0.7vw]">
-              <span className="text-[0.7vw] uppercase tracking-[0.25em] text-white/55 font-bold flex items-center gap-[0.4vw]">Overlay Font <SettingTooltip text="Choose the text style used by the time and weather overlays." /></span>
-              <div className="flex gap-[0.35vw]">
-                {(['serif', 'sans', 'mono', 'script'] as const).map((font) => (
-                  <button
-                    key={font}
-                    onClick={() => { setOverlayFont(font); resetMenuTimer(); }}
-                    className={`px-[0.7vw] py-[0.35vw] rounded-[0.35vw] text-[0.58vw] uppercase tracking-widest border transition-all ${overlayFont === font ? 'bg-[#D4CDA4] text-[#1A1D14] border-[#D4CDA4]' : 'border-white/10 text-white/60 hover:bg-white/5'}`}
-                  >
-                    {font}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Media Sources Section */}
-          <div className="space-y-[1vw]">
-            <h3 className="text-[#D4CDA4] text-[0.8vw] uppercase tracking-[0.3em] font-bold border-b border-white/10 pb-[0.5vw]">Media & Rotation <SettingTooltip text="Choose where images come from and how quickly they rotate." /></h3>
-            <div className="grid grid-cols-3 gap-[2vw]">
-                <button onClick={() => setImageSource('curated')} className={`p-[1.5vw] rounded-[1vw] border flex items-center gap-[1vw] ${imageSource === 'curated' ? 'bg-[#D4CDA4]/10 border-[#D4CDA4]' : 'border-white/10 hover:bg-white/5'}`}>
-                    <ImageIcon className={`w-[1.5vw] h-[1.5vw] ${imageSource === 'curated' ? 'text-[#D4CDA4]' : 'text-white/40'}`} />
-                    <span className="text-[0.9vw] uppercase font-bold text-white/60 tracking-widest">Curated</span>
-                </button>
-                <button onClick={() => {setImageSource('local'); fileInputRef.current?.click()}} className={`p-[1.5vw] rounded-[1vw] border flex items-center gap-[1vw] ${imageSource === 'local' ? 'bg-[#D4CDA4]/10 border-[#D4CDA4]' : 'border-white/10 hover:bg-white/5'}`}>
-                    <FolderOpen className={`w-[1.5vw] h-[1.5vw] ${imageSource === 'local' ? 'text-[#D4CDA4]' : 'text-white/40'}`} />
-                     <span className="text-[0.9vw] uppercase font-bold text-white/60 tracking-widest">Local Albums</span>
-                     <input type="file" ref={fileInputRef} onChange={handleLocalFileSelect} accept="image/*" multiple webkitdirectory="true" className="hidden" />
-                </button>
-                <div className="flex flex-col justify-between">
-                  <div className="flex justify-between items-center text-[0.8vw] uppercase tracking-[0.3em] text-white/50 font-bold mb-[0.5vw]">
-                    <span className="flex items-center gap-[0.4vw]">Cycle Time <SettingTooltip text="How often artwork automatically changes to the next image." /></span>
-                    <span className="text-[#A3B18A] font-mono text-[0.9vw]">{rotationInterval}M</span>
-                  </div>
-                  <div className="flex gap-[0.5vw] h-full">
-                    {[5, 10, 30, 60].map(time => (
-                      <button 
-                        key={time} 
-                        onClick={() => { setRotationInterval(time); resetMenuTimer(); }} 
-                        className={`flex-1 rounded-[0.5vw] text-[0.8vw] font-mono border transition-all ${rotationInterval === time ? 'bg-[#D4CDA4] text-[#1A1D14] border-[#D4CDA4]' : 'border-white/10 text-white/60 hover:bg-white/5'}`}
-                      >
-                        {time}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-            </div>
-          </div>
-
-          {/* Power & Sleep Section */}
-          <div className="space-y-[1vw]">
-            <h3 className="text-[#D4CDA4] text-[0.8vw] uppercase tracking-[0.3em] font-bold border-b border-white/10 pb-[0.5vw]">Power & Sleep <SettingTooltip text="Motion, blackout, and panel protection behavior." /></h3>
-            <div className="grid grid-cols-5 gap-[2vw]">
-              <TvSlider 
-                label="Sleep Timer" tooltip="Minutes without motion before power-safe black screen mode activates." value={powerSafeMinutes} min={1} max={60} step={1} suffix="M"
-                onChange={(v: number) => { setPowerSafeMinutes(v); resetMenuTimer(); }}
-                gradientClasses="bg-gradient-to-r from-[#A3B18A]/10 to-[#A3B18A]/50"
-                thumbColor="#A3B18A"
-              />
-              <TvSlider 
-                label="Black Threshold" tooltip="When ambient light drops below this lux value, screen stays black if Black Mode is enabled." value={blackModeThreshold} min={0} max={50} step={1} suffix=" LUX"
-                onChange={(v: number) => { setBlackModeThreshold(v); resetMenuTimer(); }}
-                gradientClasses="bg-gradient-to-r from-black to-[#A3B18A]/30"
-                thumbColor="#000000"
-              />
-              <div className="flex flex-col gap-[0.5vw]">
-                <button 
-                  onClick={() => { setBlackModeEnabled(!blackModeEnabled); resetMenuTimer(); }} 
-                  className={`flex-1 h-full rounded-[1vw] flex flex-col items-center justify-center gap-[0.2vw] border transition-all ${blackModeEnabled ? 'bg-black border-[#A3B18A] text-[#A3B18A]' : 'border-white/10 text-white/40 hover:bg-white/5'}`}
-                >
-                  <EyeOff className="w-[1.2vw] h-[1.2vw]" />
-                  <span className="text-[0.7vw] uppercase tracking-widest font-bold mt-[0.2vw] flex items-center gap-[0.35vw]">Black Mode <SettingTooltip text="Recommended for Full-Array LED, Mini-LED, and OLED panels to keep blacks truly dark in low-light scenes." /></span>
-                </button>
-              </div>
-              <div className="flex flex-col justify-center">
-                 <div className="text-[0.7vw] text-white/40 uppercase font-bold tracking-widest mb-[0.4vw] flex items-center gap-[0.4vw]">Sensitivity <SettingTooltip text="Higher values require more consecutive motion readings before waking the display." /></div>
-                 <div className="flex gap-[0.4vw]">
-                    {[1, 3, 5, 10].map(s => (
-                      <button 
-                        key={s} 
-                        onClick={() => { setMotionSensitivity(s); resetMenuTimer(); }}
-                        className={`flex-1 py-[0.4vw] rounded-[0.4vw] text-[0.7vw] font-mono border transition-all ${motionSensitivity === s ? 'bg-[#A3B18A] text-[#1A1D14] border-[#A3B18A]' : 'border-white/10 text-white/60 hover:bg-white/5'}`}
-                      >
-                        {s}
-                      </button>
-                    ))}
-                 </div>
-              </div>
-              <div className="flex flex-col justify-center">
-                 <div className="text-[0.7vw] text-white/40 uppercase font-bold tracking-widest mb-[0.4vw] flex items-center gap-[0.4vw]">OLED Saver <SettingTooltip text="Dimming timer used to reduce burn-in risk when nothing changes on screen." /></div>
-                 <div className="flex gap-[0.4vw]">
-                    {[5, 10, 30, 60].map((minutes) => (
-                      <button
-                        key={minutes}
-                        onClick={() => { setOledSaverMinutes(minutes); resetMenuTimer(); }}
-                        className={`flex-1 py-[0.4vw] rounded-[0.4vw] text-[0.7vw] font-mono border transition-all ${oledSaverMinutes === minutes ? 'bg-[#A3B18A] text-[#1A1D14] border-[#A3B18A]' : 'border-white/10 text-white/60 hover:bg-white/5'}`}
-                      >
-                        {minutes}
-                      </button>
-                    ))}
-                 </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Power & Sensors Section */}
-          <div className="space-y-[1vw]">
-            <div className="flex justify-between items-center border-b border-white/10 pb-[0.5vw]">
-              <h3 className="text-[#D4CDA4] text-[0.8vw] uppercase tracking-[0.3em] font-bold border-none pb-0">Sensors & Telemetry <SettingTooltip text="Find ambient sensors, pick the active one, and view live readings." /></h3>
-              <button onClick={() => { setIsScanning(true); resetMenuTimer(); }} className="text-[0.6vw] flex items-center gap-[0.5vw] uppercase tracking-widest text-[#D4CDA4] hover:text-white transition-colors">
-                {isScanning ? <Loader2 className="w-[1vw] h-[1vw] animate-spin" /> : <Search className="w-[1vw] h-[1vw]" />}
-                {isScanning ? 'Scanning...' : 'Rescan'}
-              </button>
-            </div>
-            <div className="grid grid-cols-2 gap-[2vw]">
-              <div className="bg-white/5 p-[1.5vw] rounded-[1vw]">
-                {Object.keys(sensors).length === 0 ? (
-                  <div className="flex flex-col items-center justify-center text-white/60 text-[0.8vw] uppercase text-center h-full gap-[0.5vw]">
-                    <p className="font-bold text-[#D4CDA4]">No Sensors Found</p>
-                    <p className="text-[0.7vw] text-white/40 leading-relaxed max-w-[80%] mt-[0.5vw]">Please connect your phone to "Ambient Setup" to set up your ambient sensor.</p>
-
-                    <div className="mt-[1vw] flex gap-[0.5vw] items-center w-full max-w-[70%]">
-                      <input 
-                        type="text" 
-                        placeholder="Manual IP (e.g. 192.168.1.50)" 
-                        className="bg-black/30 border border-white/10 rounded-[0.5vw] px-[0.8vw] py-[0.5vw] text-[0.7vw] font-mono text-white/80 w-full focus:outline-none focus:border-[#D4CDA4]/50"
-                        onKeyDown={async (e) => {
-                          if (e.key === 'Enter') {
-                            const val = e.currentTarget.value.trim();
-                            if (val) {
-                              try {
-                                const res = await fetch(`http://${val}/api/status`);
-                                const data = await res.json();
-                                if (data.id) {
-                                  if (data.pairedTvId && data.pairedTvId !== tvId) {
-                                    alert("Sensor is already paired with another TV.");
-                                    return;
-                                  }
-                                  const candidate = { name: data.name || 'Manual Sensor', ip: val, lastSeen: Date.now(), pairedTvId: data.pairedTvId };
-                                  const pairStatus = await pairSensor(candidate as SensorInfo);
-                                  if (pairStatus === 'already_paired_elsewhere') {
-                                    alert('Sensor is already paired with another TV.');
-                                    return;
-                                  }
-                                  if (pairStatus === 'unreachable') {
-                                    alert("Could not pair this sensor to this TV.");
-                                    return;
-                                  }
-                                  const newSensors = { ...sensors, [data.id]: { ...candidate, pairedTvId: tvId } };
-                                  saveSensors(newSensors);
-                                  setSelectedSensorId(data.id);
-                                  localStorage.setItem('selected_sensor_id_v2', data.id);
-                                }
-                              } catch(err) {
-                                alert("Could not connect to sensor at " + val);
-                              }
-                            }
-                          }
-                        }}
-                      />
-                    </div>
-                  </div>
-                ) : (Object.entries(sensors) as Array<[string, SensorInfo]>).map(([mac, sensor]) => (
-                    <div key={mac} className={`p-[0.8vw] rounded-[0.5vw] mb-[0.5vw] border space-y-[0.7vw] ${selectedSensorId === mac ? 'bg-[#D4CDA4]/10 border-[#D4CDA4]' : 'border-white/5 hover:bg-white/10'}`}>
-                      <div className="flex justify-between items-center gap-[0.8vw]">
-                        <div className="flex flex-col">
-                          <span className="text-[0.9vw] text-white font-mono">{sensor.name}</span>
-                          <span className="text-[0.62vw] text-white/40 font-mono">{sensor.ip}</span>
-                        </div>
-                        <button onClick={async () => {
-                          if (sensor.pairedTvId && sensor.pairedTvId !== tvId) {
-                            const confirmSwitch = window.confirm('This sensor is currently paired to another TV. Switch it to this TV?');
-                            if (!confirmSwitch) return;
-                            const pairStatus = await pairSensor(sensor);
-                            if (pairStatus !== 'paired' && pairStatus !== 'reachable_but_unpaired_endpoint') {
-                              alert('Could not switch this sensor to the current TV.');
-                              return;
-                            }
-                            const updatedSensors = { ...sensors, [mac]: { ...sensor, pairedTvId: tvId, lastSeen: Date.now() } };
-                            saveSensors(updatedSensors);
-                          }
-                          setSelectedSensorId(mac);
-                          localStorage.setItem('selected_sensor_id_v2', mac);
-                          resetMenuTimer();
-                        }} className={`text-[0.7vw] uppercase font-bold px-[1vw] py-[0.5vw] rounded-[0.2vw] transition-all ${selectedSensorId === mac ? 'bg-[#D4CDA4] text-[#1A1D14]' : 'bg-white/10 text-white/50 hover:bg-white/20'}`}>
-                          {selectedSensorId === mac ? 'Active' : 'Select'}
-                        </button>
-                      </div>
-                      <div className="flex items-center gap-[0.6vw]">
-                        <input
-                          type="text"
-                          maxLength={24}
-                          placeholder="Rename sensor"
-                          defaultValue={sensor.name.replace(' - ambient tv sensor', '')}
-                          className="bg-black/30 border border-white/10 rounded-[0.4vw] px-[0.8vw] py-[0.45vw] text-[0.62vw] font-mono text-white/80 w-full focus:outline-none focus:border-[#D4CDA4]/50"
-                          onKeyDown={async (e) => {
-                            if (e.key === 'Enter') {
-                              await updateSensorName(mac, e.currentTarget.value);
-                            }
-                          }}
-                        />
-                        <button
-                          onClick={async (e) => {
-                            const input = e.currentTarget.parentElement?.querySelector('input');
-                            if (input) {
-                              await updateSensorName(mac, input.value);
-                            }
-                          }}
-                          className="text-[0.62vw] uppercase font-bold px-[0.9vw] py-[0.45vw] rounded-[0.3vw] bg-white/10 text-white/60 hover:bg-white/20 transition-colors"
-                        >
-                          Save
-                        </button>
-                      </div>
-                      {pendingRenames[mac] && (
-                        <div className="text-[0.55vw] text-[#A3B18A] uppercase tracking-widest">
-                          Rename queued (will sync when sensor is online)
-                        </div>
-                      )}
-                    </div>
-                ))}
-              </div>
-              <div className="bg-white/5 p-[1.5vw] rounded-[1vw] flex flex-col justify-center gap-[1.5vw]">
-                <div className="flex justify-between items-center border-b border-white/10 pb-[1vw]">
-                    <span className="text-[0.8vw] text-white/50 font-bold uppercase tracking-widest">Luminance</span>
-                    <span className="text-[2vw] text-[#D4CDA4] font-mono leading-none">{telemetry.lux} <span className="text-[1vw] text-[#A3B18A]">LUX</span></span>
-                </div>
-                <div className="flex justify-between items-center">
-                    <span className="text-[0.8vw] text-white/50 font-bold uppercase tracking-widest">Temperature</span>
-                    <span className="text-[2vw] text-[#D4CDA4] font-mono leading-none">{telemetry.temp} <span className="text-[1vw] text-[#A3B18A]">K</span></span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-        </div>
-      </div>
-      <div className={`absolute bottom-[4vw] left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-[1.5vw] transition-all duration-1000 ${showSettingsMenu || !uiVisible ? 'opacity-0 scale-95 pointer-events-none' : 'opacity-100'}`}>
-        <button 
-          onClick={() => { setShowSettingsMenu(true); resetMenuTimer(); }}
-          className="bg-[#1A1D14]/40 backdrop-blur-md border border-white/10 px-[3vw] py-[1.2vw] rounded-full text-[0.8vw] uppercase tracking-[0.4em] text-[#D4CDA4]/70 hover:text-[#D4CDA4] hover:bg-[#1A1D14]/60 hover:scale-105 transition-all flex items-center gap-[1vw] shadow-[0_20px_50px_rgba(0,0,0,0.5)] pointer-events-auto"
+        <button
+          type="button"
+          onClick={openSettings}
+          className="tv-focusable pointer-events-auto flex items-center gap-4 rounded-full border border-white/10 bg-canvas-surface/50 px-12 py-4 text-tv-xs tracking-[0.4em] text-canvas-gold/80 uppercase shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-md transition-all hover:scale-105 hover:bg-canvas-surface/70 hover:text-canvas-gold"
         >
-          <Settings className="w-[1.2vw] h-[1.2vw] opacity-50" />
+          <SettingsIcon className="h-5 w-5 opacity-60" aria-hidden="true" />
           Adjust Settings
         </button>
-        {isScreenBlack && (
-          <div className="bg-red-900/60 backdrop-blur-xl border border-red-500/20 px-[2.5vw] py-[0.8vw] rounded-full text-[0.7vw] uppercase tracking-[0.3em] text-red-200 animate-pulse font-bold shadow-2xl">
-            Screen in Power Save Mode
+
+        {display.isScreenBlack ? (
+          <div
+            role="status"
+            className="animate-pulse rounded-full border border-red-500/20 bg-red-900/60 px-10 py-3 text-tv-xs font-bold tracking-[0.3em] text-red-200 uppercase shadow-2xl backdrop-blur-xl"
+          >
+            Screen in power save mode
           </div>
-        )}
+        ) : null}
       </div>
+
+      <Dialog request={dialog.request} onClose={dialog.close} />
     </div>
   );
 }

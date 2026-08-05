@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080">
+  <defs>
+    <linearGradient id="mist" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#c9cfc2"/>
+      <stop offset="46%" stop-color="#8d9a90"/>
+      <stop offset="60%" stop-color="#5d6a66"/>
+      <stop offset="100%" stop-color="#252c2b"/>
+    </linearGradient>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#mist)"/>
+  <g stroke="#eae6da" stroke-width="2" opacity="0.28" fill="none">
+    <path d="M120 742 H600"/><path d="M980 786 H1580"/><path d="M300 838 H1120"/>
+    <path d="M760 892 H1720"/><path d="M180 946 H860"/><path d="M1040 986 H1840"/>
+  </g>
+  <ellipse cx="960" cy="700" rx="520" ry="26" fill="#f8f3d6" opacity="0.16"/>
+</svg>
