@@ -1,18 +1,71 @@
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  AND-14: the adaptive-icon foreground. Every coordinate here is deliberate.
+
+  An adaptive icon is 108x108dp but only the inner 72x72dp is guaranteed to
+  survive the launcher's mask, and a circular mask trims that further to a
+  66dp-diameter circle centred at (54,54). The previous mark spanned x=14..94
+  and y=34..86, so on any round or squircle mask its corners were sliced off
+  and the composition sat visibly off-centre.
+
+  The framed-canvas mark below is centred on (54,54) and its furthest painted
+  point is 30.6dp from that centre — inside the 33dp safe radius — so it is
+  never clipped, on any launcher, on any mask shape.
+-->
+<vector
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+
+    <!-- The picture itself: a lit sky, painted inside the frame's aperture. -->
+    <path android:pathData="M32,37h44v34h-44z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="54" android:startY="37"
+                android:endX="54" android:endY="71">
+                <item android:offset="0" android:color="#FFF4ECC8" />
+                <item android:offset="0.5" android:color="#FFD8D1A2" />
+                <item android:offset="1" android:color="#FFA7B187" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Halo, then the light source. The whole product is about light. -->
     <path
-        android:fillColor="#D4CDA4"
-        android:pathData="M14,78L40,42L54,60L68,52L94,78Z" />
+        android:fillColor="#30FFF3CE"
+        android:pathData="M64,46.5m-8.6,0a8.6,8.6 0,1 1,17.2 0a8.6,8.6 0,1 1,-17.2 0" />
     <path
-        android:fillColor="#A3B18A"
-        android:pathData="M22,78L38,56L50,68L62,58L82,78Z" />
+        android:fillColor="#FFFFFBEC"
+        android:pathData="M64,46.5m-4.4,0a4.4,4.4 0,1 1,8.8 0a4.4,4.4 0,1 1,-8.8 0" />
+
+    <!-- Two ridges. Depth at 192px, a single soft mass at 48px. -->
     <path
-        android:fillColor="#1A1D14"
-        android:pathData="M23,80h62v6h-62z" />
+        android:fillColor="#FF6B7A52"
+        android:pathData="M32,61.5C39,57.2 45.5,60.4 52,58.4C59.5,56.1 66,58.8 76,55.6L76,71L32,71Z" />
     <path
-        android:fillColor="#F8F3D6"
-        android:pathData="M74,34m-11,0a11,11 0,1 1,22 0a11,11 0,1 1,-22 0" />
+        android:fillColor="#FF3E4A31"
+        android:pathData="M32,66C40,62.5 48,65.5 57,63.8C65,62.3 70,64.5 76,63L76,71L32,71Z" />
+
+    <!-- The gilt frame, drawn last so it caps the picture's edge cleanly. The
+         gradient runs corner to corner so the moulding catches the light. -->
+    <path
+        android:pathData="M32,37h44v34h-44z"
+        android:fillColor="#00000000"
+        android:strokeWidth="4.5"
+        android:strokeLineJoin="miter">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:type="linear"
+                android:startX="30" android:startY="35"
+                android:endX="78" android:endY="73">
+                <item android:offset="0" android:color="#FFE0D49B" />
+                <item android:offset="0.55" android:color="#FFC1B87E" />
+                <item android:offset="1" android:color="#FF837D4F" />
+            </gradient>
+        </aapt:attr>
+    </path>
 </vector>

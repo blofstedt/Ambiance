@@ -15,6 +15,8 @@ import {
   TOGGLE_ON,
   cx,
 } from '../ui/styles';
+import { ScreensaverCard } from './ScreensaverCard';
+import { canOpenScreensaverSettings } from '../../lib/native';
 import { BRAND } from '../../lib/theme';
 import type { Settings } from '../../lib/settings';
 
@@ -103,6 +105,8 @@ export function PowerSection({ settings, setSetting, onInteract }: PowerSectionP
           </span>
         </button>
       </div>
+
+      {canOpenScreensaverSettings() ? <ScreensaverCard onInteract={onInteract} /> : null}
 
       <div className="grid gap-8 md:grid-cols-2">
         <div>

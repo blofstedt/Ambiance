@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  AND-16: previewImage was @mipmap/ic_launcher — a 1:1 adaptive icon shown in a
+  16:9 preview slot, so the screensaver picker rendered it letterboxed or
+  stretched. The TV banner is already 320x180 and carries the wordmark, so it
+  is what the picker should show.
+-->
 <dream
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:settingsActivity="com.ambient.canvas.overlay.MainActivity"
-    android:previewImage="@mipmap/ic_launcher" />
+    android:previewImage="@drawable/tv_banner" />

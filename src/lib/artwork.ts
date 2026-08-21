@@ -151,3 +151,43 @@ export class LocalMediaLibrary {
     this.urls = [];
   }
 }
+
+/* ------------------------------------------------- AND-15: screensaver URLs */
+
+/**
+ * AND-15: the screensaver runs in a *second* WebView, on a `file://` origin,
+ * with no Capacitor bridge. It cannot load any of the URLs the app itself uses:
+ *
+ *   - bundled art resolves to `https://localhost/assets/…` inside the app, and
+ *     that host is served by Capacitor's local server *inside the app's own
+ *     WebView only*. To the dream it is simply an unreachable address.
+ *   - a local album is a `blob:` URL, which is scoped to the document that
+ *     created it and is dead in any other document.
+ *   - a `data:` URL would blow the 64 KB limit in saveDreamState, which
+ *     silently discards the *entire* snapshot — so the clock, weather and
+ *     brightness settings would be lost too, not just the picture.
+ *
+ * The result was a screensaver that framed an empty rectangle. Snapshots now
+ * carry a path the dream can resolve against its own document, and anything
+ * inherently unshareable is dropped so the dream falls back to bundled art.
+ */
+export function portableArtworkUrl(url: string | null | undefined, origin: string): string | null {
+  if (!url) return null;
+  if (url.startsWith('blob:') || url.startsWith('data:')) return null;
+  // Same-origin app assets become document-relative, so the dream resolves
+  // them against file:///android_asset/public/ instead of a dead https host.
+  if (origin && url.startsWith(`${origin}/`)) return url.slice(origin.length + 1);
+  return url;
+}
+
+/** Inverse of {@link portableArtworkUrl}, applied inside the screensaver. */
+export function resolveArtworkUrl(url: string | null | undefined, base: string): string | null {
+  if (!url) return null;
+  // Already absolute (a remote https image); nothing to resolve.
+  if (/^[a-z][a-z0-9+.-]*:/i.test(url)) return url;
+  try {
+    return new URL(url, base).href;
+  } catch {
+    return null;
+  }
+}

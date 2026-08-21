@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-feature
         android:name="android.software.leanback"
@@ -30,9 +31,30 @@
          instantly with no message, which on a TV looks like a crash. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
+    <!-- AND-17: the screensaver escape hatch, for TVs whose settings UI refuses
+         to list third-party screensavers.
+
+         Several Google TV models only ever offer Google's own ambient screen.
+         That restriction lives in the Settings UI, not in DreamManagerService,
+         which still honours the screensaver_* Secure keys — so with this
+         permission held the app can select itself and the screensaver works on
+         those devices too.
+
+         This permission is NOT granted by installing the app and cannot be
+         requested at runtime. It carries the framework's `development`
+         protection flag, which means only the owner of the device can turn it
+         on, deliberately, from a computer over adb. It has to be declared here
+         for that to be possible at all — an undeclared permission cannot be
+         granted. Until the owner does so, holdsWriteSecureSettings() is false,
+         nothing is written, and the app just points at the system picker. -->
+    <uses-permission
+        android:name="android.permission.WRITE_SECURE_SETTINGS"
+        tools:ignore="ProtectedPermissions" />
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
+        android:banner="@drawable/tv_banner"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
@@ -66,6 +88,11 @@
             android:permission="android.permission.BIND_DREAM_SERVICE">
             <intent-filter>
                 <action android:name="android.service.dreams.DreamService" />
+                <!-- AND-16: the platform's own dream picker queries with a bare
+                     action, but several TV launchers and OEM settings apps add
+                     CATEGORY_DEFAULT to that query. Without it this service is
+                     simply absent from their screensaver list. -->
+                <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
             <meta-data
                 android:name="android.service.dream"

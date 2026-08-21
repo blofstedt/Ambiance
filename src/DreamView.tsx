@@ -45,6 +45,7 @@ const STALE_AFTER_MS = 6 * 60 * 60 * 1000;
 export function DreamView() {
   const [state, setState] = useState<DreamState>(() => readInjectedDreamState() ?? FALLBACK);
   const [rotationIndex, setRotationIndex] = useState(0);
+  const [snapshotArtBroken, setSnapshotArtBroken] = useState(false);
 
   // The service injects state via evaluateJavascript after onPageFinished,
   // which may land after React has already mounted.
@@ -56,6 +57,26 @@ export function DreamView() {
     window.addEventListener('ambient-dream-state', onInjected);
     return () => window.removeEventListener('ambient-dream-state', onInjected);
   }, []);
+
+  /*
+   * AND-15: if the snapshot points at a remote image and the TV's WAN link is
+   * down, ArtworkCanvas renders its "could not be loaded" message — which would
+   * then sit on screen all night. A screensaver must never show an error, so
+   * probe the picture first and quietly fall back to bundled art.
+   */
+  const snapshotArtUrl = state.artworkUrl;
+  useEffect(() => {
+    setSnapshotArtBroken(false);
+    if (!snapshotArtUrl) return;
+
+    const probe = new Image();
+    probe.onerror = () => setSnapshotArtBroken(true);
+    probe.src = snapshotArtUrl;
+
+    return () => {
+      probe.onerror = null;
+    };
+  }, [snapshotArtUrl]);
 
   // Gentle rotation through bundled art so a long dream is not one static frame.
   useEffect(() => {
@@ -69,14 +90,15 @@ export function DreamView() {
   const age = dreamStateAgeMs();
   const stale = age !== null && age > STALE_AFTER_MS;
 
-  const artwork: Artwork | null = state.artworkUrl
-    ? {
-        id: 'dream-current',
-        title: state.artworkTitle ?? 'Ambient Canvas',
-        artist: '',
-        url: state.artworkUrl,
-      }
-    : (BUNDLED_ARTWORK[rotationIndex % BUNDLED_ARTWORK.length] ?? null);
+  const artwork: Artwork | null =
+    snapshotArtUrl && !snapshotArtBroken
+      ? {
+          id: 'dream-current',
+          title: state.artworkTitle ?? 'Ambient Canvas',
+          artist: '',
+          url: snapshotArtUrl,
+        }
+      : (BUNDLED_ARTWORK[rotationIndex % BUNDLED_ARTWORK.length] ?? null);
 
   return (
     <div className="relative h-screen w-full overflow-hidden bg-black">
