@@ -191,7 +191,18 @@ export async function detectLocalAddress(timeoutMs = 1200): Promise<string | nul
         clearTimeout(timer);
         finish(ip);
       };
-      void pc.createOffer().then((offer) => pc?.setLocalDescription(offer));
+      /*
+       * A bare `.then()` here left the rejection unhandled: a WebView that
+       * refuses to create an offer (no network interface at boot, a locked-down
+       * TV build) raised an unhandled promise rejection and then made the caller
+       * wait out the full timeout for a null it could have had immediately.
+       */
+      pc.createOffer()
+        .then((offer) => pc?.setLocalDescription(offer))
+        .catch(() => {
+          clearTimeout(timer);
+          finish(null);
+        });
     } catch {
       clearTimeout(timer);
       finish(null);

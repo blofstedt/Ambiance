@@ -1,8 +1,9 @@
 /**
  * @file Owns which image is showing and when it changes.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { useConstant } from './useConstant';
 import { LocalMediaLibrary, activeArtwork, artworkAt, nextIndex, previousIndex } from '../lib/artwork';
 import type { Artwork, ImageSource } from '../lib/types';
 
@@ -30,7 +31,7 @@ export function useArtRotation(options: UseArtRotationOptions): UseArtRotationRe
 
   const [localFiles, setLocalFiles] = useState<Artwork[]>([]);
   const [index, setIndex] = useState(0);
-  const library = useRef(new LocalMediaLibrary());
+  const library = useConstant(() => new LocalMediaLibrary());
 
   const list = useMemo(() => activeArtwork(source, localFiles), [source, localFiles]);
 
@@ -61,23 +62,20 @@ export function useArtRotation(options: UseArtRotationOptions): UseArtRotationRe
   const loadLocalFiles = useCallback((files: File[]) => {
     // WEB-09: LocalMediaLibrary revokes the previous object URLs before minting
     // new ones. The old handler leaked every URL it ever created.
-    const artwork = library.current.replace(files);
+    const artwork = library.replace(files);
     setLocalFiles(artwork);
     setIndex(0);
     return artwork.length;
-  }, []);
+  }, [library]);
 
   const clearLocalFiles = useCallback(() => {
-    library.current.revokeAll();
+    library.revokeAll();
     setLocalFiles([]);
     setIndex(0);
-  }, []);
+  }, [library]);
 
   // WEB-09: release every blob URL on unmount.
-  useEffect(() => {
-    const instance = library.current;
-    return () => instance.revokeAll();
-  }, []);
+  useEffect(() => () => library.revokeAll(), [library]);
 
   return {
     current: artworkAt(list, index),

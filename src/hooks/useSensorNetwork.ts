@@ -2,7 +2,7 @@
  * @file Composes sensor state, discovery, telemetry and actions into one API.
  */
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { useSensorDiscovery } from './useSensorDiscovery';
 import { useSensorTelemetry } from './useSensorTelemetry';
@@ -89,6 +89,10 @@ export function useSensorNetwork(): UseSensorNetworkResult {
     () => debouncedSave<Record<string, SensorInfo>>('sensors', 5000),
     [],
   );
+
+  // WEB-28: release the writer (and its entry in the module flush set) on
+  // unmount, after committing anything still pending.
+  useEffect(() => persistSensors.dispose, [persistSensors]);
 
   /* ------------------------------------------------------------------- state */
 

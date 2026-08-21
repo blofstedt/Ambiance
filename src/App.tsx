@@ -101,6 +101,16 @@ export default function App() {
 
   /* ------------------------------------------------------------- screensaver */
 
+  /*
+   * Hoisted out of the dependency array below. `art.current?.url` is a member
+   * expression, which react-hooks/exhaustive-deps cannot verify, so it insisted
+   * on the whole `art` object — and `art` is a fresh object every render, which
+   * would republish the screensaver snapshot on every single render instead of
+   * only when the picture actually changes.
+   */
+  const artworkUrl = art.current?.url ?? null;
+  const artworkTitle = art.current?.title ?? null;
+
   useDreamPublisher(
     useMemo(
       () => ({
@@ -115,8 +125,8 @@ export default function App() {
         weatherTemp: weather.temperatureC,
         weatherCode: weather.code,
         weatherLocation: weather.label,
-        artworkUrl: art.current?.url ?? null,
-        artworkTitle: art.current?.title ?? null,
+        artworkUrl,
+        artworkTitle,
       }),
       [
         network.telemetry,
@@ -130,8 +140,8 @@ export default function App() {
         weather.temperatureC,
         weather.code,
         weather.label,
-        art.current?.url,
-        art.current?.title,
+        artworkUrl,
+        artworkTitle,
       ],
     ),
   );

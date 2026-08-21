@@ -3,6 +3,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { useConstant } from './useConstant';
 import { MotionWindow } from '../lib/motion';
 import {
   Ema,
@@ -17,6 +18,9 @@ import {
 import { load, save } from '../lib/storage';
 import type { RoomProfile, Telemetry } from '../lib/types';
 import type { Settings } from '../lib/settings';
+
+/** Ignore repeat remote input inside this window; the dim timer runs in minutes. */
+const ACTIVITY_THROTTLE_MS = 10_000;
 
 export interface UseDisplayStateOptions {
   telemetry: Telemetry;
@@ -58,16 +62,18 @@ export function useDisplayState(options: UseDisplayStateOptions): UseDisplayStat
    * sliders from the stored profile — including mid-drag, so the control
    * visibly jumped out from under the user.
    */
-  const luxEma = useRef(new Ema(0.12));
-  const tempEma = useRef(new Ema(0.12));
+  // See useConstant: `useRef(new Ema(...))` rebuilt these on every render, and
+  // this hook re-renders once a second for the life of the app.
+  const luxEma = useConstant(() => new Ema(0.12));
+  const tempEma = useConstant(() => new Ema(0.12));
   const [smoothed, setSmoothed] = useState({ lux: 0, temp: 0 });
 
   useEffect(() => {
     if (!connected) return;
-    const lux = luxEma.current.push(telemetry.lux);
-    const temp = tempEma.current.push(telemetry.temp);
+    const lux = luxEma.push(telemetry.lux);
+    const temp = tempEma.push(telemetry.temp);
     setSmoothed({ lux, temp });
-  }, [telemetry.lux, telemetry.temp, connected]);
+  }, [telemetry.lux, telemetry.temp, connected, luxEma, tempEma]);
 
   const luxBucketRef = useRef<number | null>(null);
   const tempBucketRef = useRef<number | null>(null);
@@ -112,12 +118,12 @@ export function useDisplayState(options: UseDisplayStateOptions): UseDisplayStat
 
   /* ------------------------------------------------------------ motion/sleep */
 
-  const motionWindow = useRef(new MotionWindow(settings.motionSensitivity));
+  const motionWindow = useConstant(() => new MotionWindow(settings.motionSensitivity));
   const sleepTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    motionWindow.current.resize(settings.motionSensitivity);
-  }, [settings.motionSensitivity]);
+    motionWindow.resize(settings.motionSensitivity);
+  }, [settings.motionSensitivity, motionWindow]);
 
   const clearSleepTimer = useCallback(() => {
     if (sleepTimer.current !== null) {
@@ -136,13 +142,13 @@ export function useDisplayState(options: UseDisplayStateOptions): UseDisplayStat
   useEffect(() => {
     if (!connected) {
       // No sensor: don't blank the screen on the strength of fabricated motion.
-      motionWindow.current.clear();
+      motionWindow.clear();
       clearSleepTimer();
       setIsScreenBlack(false);
       return;
     }
 
-    motionWindow.current.push(telemetry.motion);
+    motionWindow.push(telemetry.motion);
 
     // Black Mode: below the lux threshold the panel stays black regardless of
     // motion, so a dark room never gets a glowing rectangle in it.
@@ -152,13 +158,13 @@ export function useDisplayState(options: UseDisplayStateOptions): UseDisplayStat
       return;
     }
 
-    if (motionWindow.current.isSustainedMotion) {
+    if (motionWindow.isSustainedMotion) {
       clearSleepTimer();
       setIsScreenBlack(false);
       return;
     }
 
-    if (motionWindow.current.isSustainedStill && !isScreenBlack && sleepTimer.current === null) {
+    if (motionWindow.isSustainedStill && !isScreenBlack && sleepTimer.current === null) {
       sleepTimer.current = setTimeout(
         () => {
           setIsScreenBlack(true);
@@ -176,23 +182,58 @@ export function useDisplayState(options: UseDisplayStateOptions): UseDisplayStat
     settings.blackModeThreshold,
     settings.powerSafeMinutes,
     clearSleepTimer,
+    motionWindow,
   ]);
 
   useEffect(() => clearSleepTimer, [clearSleepTimer]);
 
   /* ---------------------------------------------------------------- OLED dim */
 
+  /**
+   * WEB-30: the OLED timer could only ever be reset by sensor motion or by the
+   * settings panel being open. Someone with no sensor paired — or whose sensor
+   * had dropped off the network — had nothing that could reset it: the clock
+   * and weather faded to 20% a few minutes after launch and stayed there for
+   * good, and pressing keys on the remote did not bring them back. Someone
+   * standing in front of the TV working the remote is present by definition.
+   */
+  const [activityTick, setActivityTick] = useState(0);
+
   useEffect(() => {
-    if (settingsOpen || (connected && telemetry.motion)) {
-      setIsOledDimmed(false);
-      return;
-    }
+    let last = 0;
+    const bump = () => {
+      // Throttled hard: the dim timer is measured in minutes, and a held-down
+      // D-pad key fires continuously.
+      const now = Date.now();
+      if (now - last < ACTIVITY_THROTTLE_MS) return;
+      last = now;
+      setActivityTick((tick) => tick + 1);
+    };
+
+    window.addEventListener('keydown', bump);
+    window.addEventListener('mousemove', bump);
+    window.addEventListener('mousedown', bump);
+    window.addEventListener('touchstart', bump, { passive: true });
+    return () => {
+      window.removeEventListener('keydown', bump);
+      window.removeEventListener('mousemove', bump);
+      window.removeEventListener('mousedown', bump);
+      window.removeEventListener('touchstart', bump);
+    };
+  }, []);
+
+  useEffect(() => {
+    // Any re-run of this effect is a presence signal or a settings change, so
+    // undim first and then re-arm from zero.
+    setIsOledDimmed(false);
+    if (settingsOpen || (connected && telemetry.motion)) return;
+
     const timer = setTimeout(
       () => setIsOledDimmed(true),
       Math.max(1, settings.oledSaverMinutes) * 60_000,
     );
     return () => clearTimeout(timer);
-  }, [telemetry.motion, settings.oledSaverMinutes, settingsOpen, connected]);
+  }, [telemetry.motion, settings.oledSaverMinutes, settingsOpen, connected, activityTick]);
 
   return {
     luminance,

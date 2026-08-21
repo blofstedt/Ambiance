@@ -21,11 +21,26 @@ export function useSettings(): UseSettingsResult {
   const [settings, setSettings] = useState<Settings>(() => loadSettings());
   const writeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  /*
+   * WEB-27: the flush effect below used to list `[settings]` as its dependency
+   * and call saveSettings() from its own cleanup. React runs the cleanup before
+   * every re-run, so each keystroke of a slider drag triggered a synchronous,
+   * whole-document localStorage write — of the PREVIOUS value, because the
+   * cleanup closes over the render it was created in. That is precisely the
+   * behaviour the 400ms debounce above exists to prevent, and it undid it
+   * completely: dozens of blocking main-thread writes per second on a TV box.
+   *
+   * The latest value lives in a ref instead, so the listener and the unmount
+   * flush both read current state while the effect itself runs exactly once.
+   */
+  const latest = useRef(settings);
+  latest.current = settings;
+
   // Coalesce writes; slider drags fire dozens of updates per second.
   useEffect(() => {
     if (writeTimer.current !== null) clearTimeout(writeTimer.current);
     writeTimer.current = setTimeout(() => {
-      saveSettings(settings);
+      saveSettings(latest.current);
       writeTimer.current = null;
     }, 400);
 
@@ -39,13 +54,13 @@ export function useSettings(): UseSettingsResult {
 
   // Flush on teardown so the last change is never lost.
   useEffect(() => {
-    const flush = () => saveSettings(settings);
+    const flush = () => saveSettings(latest.current);
     window.addEventListener('pagehide', flush);
     return () => {
       window.removeEventListener('pagehide', flush);
       flush();
     };
-  }, [settings]);
+  }, []);
 
   // AND-04: mirror the keep-awake preference into the native window flag.
   useEffect(() => {
