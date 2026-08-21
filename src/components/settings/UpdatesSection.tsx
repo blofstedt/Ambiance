@@ -103,7 +103,9 @@ function StatusLine({ update }: { update: UseAppUpdateResult }) {
     );
   }
 
-  return <p className="text-tv-sm text-white/40">Last checked {relativeDay(update.lastCheckedAt)}.</p>;
+  return (
+    <p className="text-tv-sm text-white/40">Last checked {relativeDay(update.lastCheckedAt)}.</p>
+  );
 }
 
 export function UpdatesSection({ update, onInteract }: UpdatesSectionProps) {

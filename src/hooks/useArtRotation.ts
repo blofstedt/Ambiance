@@ -4,7 +4,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useConstant } from './useConstant';
-import { LocalMediaLibrary, activeArtwork, artworkAt, nextIndex, previousIndex } from '../lib/artwork';
+import {
+  LocalMediaLibrary,
+  activeArtwork,
+  artworkAt,
+  nextIndex,
+  previousIndex,
+} from '../lib/artwork';
 import type { Artwork, ImageSource } from '../lib/types';
 
 export interface UseArtRotationOptions {
@@ -41,7 +47,10 @@ export function useArtRotation(options: UseArtRotationOptions): UseArtRotationRe
     setIndex((current) => (list.length === 0 ? 0 : current % list.length));
   }, [list.length]);
 
-  const next = useCallback(() => setIndex((current) => nextIndex(current, list.length)), [list.length]);
+  const next = useCallback(
+    () => setIndex((current) => nextIndex(current, list.length)),
+    [list.length],
+  );
   const previous = useCallback(
     () => setIndex((current) => previousIndex(current, list.length)),
     [list.length],
@@ -55,18 +64,24 @@ export function useArtRotation(options: UseArtRotationOptions): UseArtRotationRe
   useEffect(() => {
     if (isStatic || paused || list.length <= 1) return;
     const minutes = Math.max(1, rotationMinutes);
-    const timer = setInterval(() => setIndex((current) => nextIndex(current, list.length)), minutes * 60_000);
+    const timer = setInterval(
+      () => setIndex((current) => nextIndex(current, list.length)),
+      minutes * 60_000,
+    );
     return () => clearInterval(timer);
   }, [isStatic, paused, rotationMinutes, list.length]);
 
-  const loadLocalFiles = useCallback((files: File[]) => {
-    // WEB-09: LocalMediaLibrary revokes the previous object URLs before minting
-    // new ones. The old handler leaked every URL it ever created.
-    const artwork = library.replace(files);
-    setLocalFiles(artwork);
-    setIndex(0);
-    return artwork.length;
-  }, [library]);
+  const loadLocalFiles = useCallback(
+    (files: File[]) => {
+      // WEB-09: LocalMediaLibrary revokes the previous object URLs before minting
+      // new ones. The old handler leaked every URL it ever created.
+      const artwork = library.replace(files);
+      setLocalFiles(artwork);
+      setIndex(0);
+      return artwork.length;
+    },
+    [library],
+  );
 
   const clearLocalFiles = useCallback(() => {
     library.revokeAll();

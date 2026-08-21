@@ -250,7 +250,9 @@ export function useSensorNetwork(): UseSensorNetworkResult {
 
   const unpair = useCallback(
     async (id: string): Promise<SensorCallOutcome> => {
-      const outcome = await withSensor(id, (sensor) => unpairSensor(sensor, credentialsRef.current));
+      const outcome = await withSensor(id, (sensor) =>
+        unpairSensor(sensor, credentialsRef.current),
+      );
       if (outcome === 'ok') {
         const existing = sensorsRef.current[id];
         if (existing) {

@@ -212,7 +212,10 @@ export function buildUpdate(release: GithubRelease, manifest: unknown): Availabl
   if (!apk || !isTrustedUpdateUrl(apk.browser_download_url)) return null;
   if (apk.size > MAX_APK_BYTES) return null;
 
-  const meta = (manifest && typeof manifest === 'object' ? manifest : {}) as Record<string, unknown>;
+  const meta = (manifest && typeof manifest === 'object' ? manifest : {}) as Record<
+    string,
+    unknown
+  >;
 
   const versionCode = typeof meta.versionCode === 'number' ? Math.trunc(meta.versionCode) : 0;
   const versionName =

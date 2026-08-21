@@ -92,6 +92,28 @@ repo stays free of binaries, and adaptive icons require API 26. See
 
 ---
 
+## Updates over the air
+
+Televisions running Ambient Canvas update themselves from GitHub Releases. Push
+a tag and every TV offers the new version under **Adjust Settings → Software
+Update** — no sideloading, no ADB, no computer in the room.
+
+```bash
+git tag v1.4.0 && git push origin v1.4.0
+```
+
+The release workflow builds a signed APK, publishes it with an `update.json`
+manifest carrying the build number and a SHA-256, and the TV verifies that
+checksum before handing the file to Android's own installer. Nothing installs
+unattended: the app offers, Android asks, a person confirms.
+
+Two things are load-bearing and easy to get wrong — every release must be signed
+with **the same key**, and the build number must only ever increase.
+**[`docs/RELEASING.md`](docs/RELEASING.md)** covers both, plus the one-time
+keystore setup.
+
+---
+
 ## The sensor
 
 Flash `firmware/ambient_sensor.ino` to an ESP32 with a TCS34725 colour sensor

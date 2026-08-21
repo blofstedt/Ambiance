@@ -26,7 +26,7 @@ import javax.net.ssl.HttpsURLConnection;
 import org.json.JSONObject;
 
 /**
- * AND-10: over-the-air updates from GitHub Releases.
+ * AND-11: over-the-air updates from GitHub Releases.
  *
  * Android will not let a WebView install a package, so the download, the
  * checksum and the handoff to the system installer all have to happen here.

@@ -80,9 +80,13 @@ vocabulary and it is cheap.
 | **Which images show, rotation, local photo albums** | `src/lib/artwork.ts`, `src/hooks/useArtRotation.ts` | `lib/sensor*`, `firmware/` |
 | **Settings not saving / resetting on reboot** | `src/lib/settings.ts`, `src/lib/storage.ts` | `components/` |
 | **Screensaver behaviour** | `src/DreamView.tsx`, `src/hooks/useDreamPublisher.ts`, `src/lib/native.ts`, `android/app/src/main/java/com/ambient/canvas/overlay/AmbientDreamService.java` | `App.tsx`, `lib/sensor*` |
+| **"Update available", version numbers, the update screen** | `src/lib/updates.ts` (decides), `src/hooks/useAppUpdate.ts` (wiring), `src/components/settings/UpdatesSection.tsx` (what you see) | `android/`, unless the download itself is wrong |
+| **Update downloads, install fails, "unknown sources"** | `android/app/src/main/java/com/ambient/canvas/overlay/UpdateInstaller.java`, `AndroidManifest.xml` | all of `src/` |
+| **Publishing a new version / signing keys** | `docs/RELEASING.md`, `.github/workflows/release.yml` | all of `src/` |
+| **Something is rebuilt on every render** | `src/hooks/useConstant.ts` | everything else |
 | **The physical sensor device / firmware** | `firmware/ambient_sensor.ino` **only** | all of `src/` |
 | **App icon, app name, permissions, TV launcher** | `android/app/src/main/res/`, `android/app/src/main/AndroidManifest.xml` | all of `src/` |
-| **Build fails / release / signing / CI** | `package.json`, `vite.config.ts`, `android/app/build.gradle`, `.github/workflows/ci.yml` | all of `src/` |
+| **Build fails / CI** | `package.json`, `vite.config.ts`, `android/app/build.gradle`, `.github/workflows/ci.yml` | all of `src/` |
 | **"What was wrong before / why is it like this"** | `CHANGELOG.md` | everything else |
 
 ### Design changes: the three files that control almost everything
@@ -171,6 +175,17 @@ Do not undo them. `CHANGELOG.md` has the full history if you need the why.
    of TypeScript parameter properties. That is what keeps it unit-testable.
 10. **Never inline a secret into the client bundle.** Anything Vite can see ships
     inside the APK and is trivially extractable.
+11. **Every release is signed with the same key.** Android refuses an update
+    signed by a different certificate, and the only recovery is uninstalling —
+    which loses every setting and paired sensor. See `docs/RELEASING.md`.
+12. **`versionCode` only ever goes up.** It comes from `github.run_number` and
+    is the value Android itself compares. Never set it by hand.
+13. **An APK is only installed if its SHA-256 matches the release manifest**, and
+    only from a host on the allowlist — re-checked at every redirect hop, in
+    both `lib/updates.ts` and `UpdateInstaller.java`. Keep those two in step.
+14. **Use `useConstant`, never `useRef(new Thing())`.** useRef takes a value, not
+    a factory, so the second form rebuilds the object on every render. This app
+    re-renders once a second, for weeks.
 
 ---
 
@@ -229,6 +244,11 @@ npm run mock:sensor -- --paired     # already paired to another TV (409 path)
 
 Then in the app: **Adjust Settings → Sensors → manual address → `localhost:8080`**.
 
+**You cannot test an update end to end without publishing one.** `lib/updates.ts`
+is pure and covered by `tests/updates.test.ts`, so the decision logic is testable
+offline; the download and install are native and need a real release on a real
+TV. Say so rather than claiming it works.
+
 Settings are strict: `strict`, `noUncheckedIndexedAccess`, `noUnusedLocals`, and
 `react-hooks/exhaustive-deps` is an **error**. If the hooks rule fires, fix the
 dependencies — do not silence it. Several of the worst bugs in this app's
@@ -271,8 +291,12 @@ Documented decisions, not oversights. See the end of `CHANGELOG.md`.
   replace it without touching callers.
 - **No Play Store banner asset.** It belongs in the store listing, and this repo
   is deliberately free of binary files.
-- **`npm ci` / `vite build` / `gradlew` have never been run in a verified
-  environment.** Run `npm run verify` before trusting a build.
+- **`gradlew` has never been run in a verified environment.** `npm ci` and
+  `npm run verify` now have been (2026-08-21) and are green; the Android and
+  firmware builds still only run in CI.
+- **The over-the-air update path has never completed on a device.** The logic is
+  unit-tested and the workflow is written, but no release has been published
+  through it yet.
 
 ---
 

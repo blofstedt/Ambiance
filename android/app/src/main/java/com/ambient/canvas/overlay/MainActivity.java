@@ -29,7 +29,7 @@ public class MainActivity extends BridgeActivity {
     private GeolocationPermissions.Callback pendingGeoCallback;
     private String pendingGeoOrigin;
 
-    /** AND-10: over-the-air updates. See UpdateInstaller. */
+    /** AND-11: over-the-air updates. See UpdateInstaller. */
     private UpdateInstaller updateInstaller;
 
     @Override
@@ -136,7 +136,7 @@ public class MainActivity extends BridgeActivity {
             return true;
         }
 
-        /* ------------------------------------------------- AND-10: updates */
+        /* ------------------------------------------------- AND-11: updates */
 
         @JavascriptInterface
         public String getVersionName() {

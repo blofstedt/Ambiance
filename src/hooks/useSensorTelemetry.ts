@@ -30,8 +30,14 @@ export interface UseSensorTelemetryOptions {
 }
 
 export function useSensorTelemetry(options: UseSensorTelemetryOptions): void {
-  const { selectedSensorId, getSensor, onTelemetry, onSensorSeen, onConnectionChange, onReachable } =
-    options;
+  const {
+    selectedSensorId,
+    getSensor,
+    onTelemetry,
+    onSensorSeen,
+    onConnectionChange,
+    onReachable,
+  } = options;
 
   const callbacks = useRef({
     getSensor,

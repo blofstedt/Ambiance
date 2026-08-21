@@ -1,6 +1,6 @@
 name: Release
 
-# AND-10: this workflow is the other half of the in-app updater. It publishes a
+# AND-11: this workflow is the other half of the in-app updater. It publishes a
 # signed APK plus an update.json manifest to a GitHub Release; the TV reads that
 # release, compares versionCode, verifies the checksum and installs.
 #

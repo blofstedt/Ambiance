@@ -31,6 +31,11 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # BUILD-11: format:check existed as a script but nothing ever ran it, so
+      # 14 files had drifted out of Prettier style unnoticed.
+      - name: Format
+        run: npm run format:check
+
       # Regression coverage for WEB-05, WEB-07, WEB-10, WEB-12, WEB-15.
       - name: Unit tests
         run: npm run test

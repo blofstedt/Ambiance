@@ -106,12 +106,7 @@ export function isDreamMode(): boolean {
  * thread, and the states here change a few times a second at most.
  */
 export type UpdateDownloadState =
-  | 'idle'
-  | 'downloading'
-  | 'verifying'
-  | 'ready'
-  | 'installing'
-  | 'error';
+  'idle' | 'downloading' | 'verifying' | 'ready' | 'installing' | 'error';
 
 export interface UpdateStatus {
   state: UpdateDownloadState;

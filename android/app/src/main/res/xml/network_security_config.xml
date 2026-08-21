@@ -6,7 +6,7 @@
   Open-Meteo / BigDataCloud calls, and made the domain-config above it
   pointless.
 
-  AND-09: the replacement did not work either, for a subtler reason. It listed
+  AND-10: the replacement did not work either, for a subtler reason. It listed
       <domain includeSubdomains="true">192.168.0.0/16</domain>
   and two other CIDR blocks. Android's network security config has no concept of
   a CIDR range — <domain> matches a hostname or a single literal IP and nothing

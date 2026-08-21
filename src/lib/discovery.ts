@@ -138,9 +138,9 @@ export async function discoverSensors(options: DiscoveryOptions): Promise<boolea
     .map((sensor) => (sensor.ip ? subnetOf(sensor.ip) : null))
     .filter((value): value is string => value !== null);
 
-  const candidates = [...new Set([ownSubnet, ...knownSubnets, ...(ownSubnet ? [] : FALLBACK_SUBNETS)])].filter(
-    (value): value is string => value !== null,
-  );
+  const candidates = [
+    ...new Set([ownSubnet, ...knownSubnets, ...(ownSubnet ? [] : FALLBACK_SUBNETS)]),
+  ].filter((value): value is string => value !== null);
 
   for (const subnet of candidates) {
     if (signal.aborted || budget.remaining <= 0) break;

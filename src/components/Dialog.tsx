@@ -129,9 +129,7 @@ export function Dialog({ request, onClose }: Props) {
         >
           {request.title}
         </h2>
-        <p className="mb-8 text-tv-sm leading-relaxed text-white/75">
-          {request.message}
-        </p>
+        <p className="mb-8 text-tv-sm leading-relaxed text-white/75">{request.message}</p>
 
         {request.input ? (
           <div className="mb-8">
@@ -153,11 +151,7 @@ export function Dialog({ request, onClose }: Props) {
 
         <div className="flex flex-wrap justify-end gap-4">
           {request.input ? (
-            <button
-              type="button"
-              onClick={submitInput}
-              className={BUTTON_PRIMARY}
-            >
+            <button type="button" onClick={submitInput} className={BUTTON_PRIMARY}>
               {request.input.submitLabel ?? 'Save'}
             </button>
           ) : null}
