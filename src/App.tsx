@@ -9,6 +9,7 @@ import { ArtworkCanvas } from './components/ArtworkCanvas';
 import { Dialog, useDialog } from './components/Dialog';
 import { Overlays } from './components/Overlays';
 import { SettingsPanel } from './components/SettingsPanel';
+import { useAppUpdate } from './hooks/useAppUpdate';
 import { useArtRotation } from './hooks/useArtRotation';
 import { useDisplayState } from './hooks/useDisplayState';
 import { useDreamPublisher } from './hooks/useDreamPublisher';
@@ -25,6 +26,7 @@ export default function App() {
   const dialog = useDialog();
   const network = useSensorNetwork();
   const weather = useWeather(settings.showWeather);
+  const update = useAppUpdate();
 
   const connected = network.connection === 'connected';
 
@@ -223,6 +225,7 @@ export default function App() {
         localCount={art.localCount}
         onToggleWeather={() => void handleToggleWeather()}
         sensorPanel={sensorPanel}
+        update={update}
       />
 
       {/*

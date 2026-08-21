@@ -10,7 +10,10 @@ coverage/
 # Capacitor copies the web build in here
 android/app/src/main/assets/public/
 
-# Signing material must never be committed (BUILD-02)
+# Signing material must never be committed (BUILD-02). Losing control of the
+# release key means anyone can publish an "update" that every TV will accept.
 *.jks
 *.keystore
 keystore.properties
+keystore.txt
+*.keystore.base64

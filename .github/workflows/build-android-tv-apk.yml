@@ -1,192 +1,100 @@
-name: Build Android TV APK
+name: Sideload APK
+
+# A debug APK to copy onto a TV by hand, on demand.
+#
+# This used to run on every push to main and duplicated the android job in
+# ci.yml step for step, so every push paid for two identical Gradle builds. CI
+# now owns push validation and this workflow is manual only.
+#
+# It also used to pass GEMINI_API_KEY into the build. Nothing has read that key
+# since BUILD-04 removed the `define` that inlined it into the client bundle,
+# and passing a secret to a build that ships inside an APK is exactly the
+# mistake that change existed to undo.
+#
+# NOTE: the debug build carries applicationIdSuffix ".debug", so it installs
+# alongside the real app as a separate package. It is NOT part of the
+# over-the-air update channel and will never be offered an update — that is
+# release.yml's job.
 
 on:
-  push:
-    branches: [main, master]
   workflow_dispatch:
     inputs:
-      build_type:
-        description: 'Build type (debug or release)'
+      ref:
+        description: 'Branch, tag or SHA to build'
         required: false
-        default: 'debug'
-        type: choice
-        options:
-          - debug
-          - release
+        default: ''
+        type: string
+
+concurrency:
+  group: sideload-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
-    name: Build APK
+    name: Build debug APK
     runs-on: ubuntu-latest
 
     steps:
-      # ─── Checkout ────────────────────────────────────────────────────────────
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      # ─── Node.js ─────────────────────────────────────────────────────────────
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
         with:
-          node-version: '22'
-          cache: 'npm'
+          ref: ${{ inputs.ref || github.ref }}
 
-      # ─── Java (required by Gradle / Android SDK) ──────────────────────────
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
+      - uses: actions/setup-node@v4
         with:
-          java-version: '21'
-          distribution: 'temurin'
+          node-version: 20
+          cache: npm
 
-      # ─── Android SDK ─────────────────────────────────────────────────────────
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      # ─── Gradle CLI (used to reconstruct wrapper JAR when binaries aren't committed) ──
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+      - uses: actions/setup-java@v4
         with:
-          gradle-version: 8.14.3
+          distribution: temurin
+          java-version: 21
 
-      # ─── Install npm dependencies ─────────────────────────────────────────
-      - name: Install dependencies
-        run: npm ci
+      - uses: android-actions/setup-android@v3
 
-      # ─── Build the web app (Vite → dist/) ────────────────────────────────
-      - name: Build web app
-        run: npm run build
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      - run: npm ci
 
-      # ─── Capacitor: add Android platform if not already present ──────────
-      - name: Add Android platform (first-time only)
+      # BUILD-01: settings.gradle includes :capacitor-cordova-android-plugins,
+      # which does not exist in a fresh clone until `cap sync` generates it.
+      - name: Build web bundle and sync Capacitor
+        run: npm run android:prepare
+
+      # Per android/BINARY_FREE_SETUP.md the wrapper JAR is intentionally not
+      # committed, so it has to be regenerated before ./gradlew will run.
+      - name: Restore Gradle wrapper
         run: |
-          if [ ! -d "android" ]; then
-            echo "android/ folder not found — running cap add android"
-            npx cap add android
-          else
-            echo "android/ folder found — skipping cap add"
+          cd android
+          if [ ! -f gradle/wrapper/gradle-wrapper.jar ]; then
+            gradle wrapper --gradle-version 8.14.3
           fi
+          chmod +x gradlew
 
-      # ─── Capacitor: sync web assets into the Android project ─────────────
-      - name: Sync Capacitor
-        run: npx cap sync android
-
-      # ─── Patch AndroidManifest for Android TV / Leanback ─────────────────
-      # Adds the LEANBACK_LAUNCHER intent filter so the app appears in the
-      # TV home screen launcher. Also sets android:banner for the TV grid.
-      - name: Patch AndroidManifest.xml for Android TV
-        run: |
-          MANIFEST="android/app/src/main/AndroidManifest.xml"
-
-          # Inject LEANBACK_LAUNCHER intent-filter if not already present
-          if ! grep -q "LEANBACK_LAUNCHER" "$MANIFEST"; then
-            echo "Patching manifest with LEANBACK_LAUNCHER intent-filter…"
-            sed -i 's|</activity>|        <intent-filter>\n                <action android:name="android.intent.action.MAIN" />\n                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />\n            </intent-filter>\n        </activity>|' "$MANIFEST"
-          fi
-
-          # Declare leanback feature as required=false (keeps it installable on phones too)
-          if ! grep -q "android.software.leanback" "$MANIFEST"; then
-            sed -i 's|<manifest|<manifest|;/<manifest/a\    <uses-feature android:name="android.software.leanback" android:required="false" />\n    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />' "$MANIFEST"
-          fi
-
-          echo "Manifest after patch:"
-          cat "$MANIFEST"
-
-
-      # ─── Recreate missing Gradle wrapper JAR (binary-free repo support) ─────────
-      - name: Recreate gradle-wrapper.jar when missing
-        run: |
-          WRAPPER_JAR="android/gradle/wrapper/gradle-wrapper.jar"
-          if [ -f "$WRAPPER_JAR" ]; then
-            echo "gradle-wrapper.jar already present"
-            exit 0
-          fi
-
-          GRADLE_BIN="$(command -v gradle || true)"
-          if [ -z "$GRADLE_BIN" ]; then
-            echo "Gradle CLI not found on PATH"
-            exit 1
-          fi
-
-          GRADLE_HOME="$(cd "$(dirname "$GRADLE_BIN")/.." && pwd)"
-          WRAPPER_MAIN_JAR=$(find "$GRADLE_HOME/lib/plugins" -maxdepth 1 -name 'gradle-wrapper-main-*.jar' | head -n 1)
-
-          if [ -z "$WRAPPER_MAIN_JAR" ]; then
-            echo "Unable to find gradle-wrapper-main-*.jar under $GRADLE_HOME/lib/plugins"
-            exit 1
-          fi
-
-          mkdir -p android/gradle/wrapper
-          TMP_DIR=$(mktemp -d)
-          (cd "$TMP_DIR" && jar xf "$WRAPPER_MAIN_JAR" gradle-wrapper.jar)
-          mv "$TMP_DIR/gradle-wrapper.jar" "$WRAPPER_JAR"
-
-          echo "Recreated $WRAPPER_JAR from $WRAPPER_MAIN_JAR"
-          ls -l "$WRAPPER_JAR"
-
-      # ─── Make Gradle wrapper executable ──────────────────────────────────
-      - name: Make gradlew executable
-        run: chmod +x android/gradlew
-
-      # ─── Build DEBUG APK (always) ─────────────────────────────────────────
-      - name: Build debug APK
+      # The manifest patching that used to live here — two sed commands
+      # rewriting AndroidManifest.xml in place to inject LEANBACK_LAUNCHER and
+      # the uses-feature tags — is gone. The manifest has carried all three
+      # since AND-02, so the greps guarding those seds never fired, and a
+      # regex that inserts markup before the first `</activity>` is not
+      # something to leave armed in a build that ships to a device.
+      - name: Assemble debug
         working-directory: android
-        run: ./gradlew assembleDebug --no-daemon --stacktrace
+        run: ./gradlew --no-daemon assembleDebug
 
-      # ─── (Optional) Build RELEASE APK ─────────────────────────────────────
-      # Requires KEYSTORE_BASE64, KEY_ALIAS, KEY_STORE_PASS, KEY_PASS secrets.
-      # Only runs when triggered via workflow_dispatch with build_type=release
-      # or when a tag like v1.0.0 is pushed.
-      - name: Decode keystore
-        if: |
-          (github.event.inputs.build_type == 'release') ||
-          (startsWith(github.ref, 'refs/tags/v'))
-        run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/release.keystore
-
-      - name: Build release APK
-        if: |
-          (github.event.inputs.build_type == 'release') ||
-          (startsWith(github.ref, 'refs/tags/v'))
-        working-directory: android
-        run: |
-          ./gradlew assembleRelease --no-daemon \
-            -Pandroid.injected.signing.store.file="$GITHUB_WORKSPACE/android/app/release.keystore" \
-            -Pandroid.injected.signing.store.password="${{ secrets.KEY_STORE_PASS }}" \
-            -Pandroid.injected.signing.key.alias="${{ secrets.KEY_ALIAS }}" \
-            -Pandroid.injected.signing.key.password="${{ secrets.KEY_PASS }}"
-
-      # ─── Upload artifacts ─────────────────────────────────────────────────
-      - name: Upload debug APK
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: ambient-canvas-debug-${{ github.sha }}
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: android/app/build/outputs/apk/debug/*.apk
           retention-days: 14
 
-      - name: Upload release APK
-        if: |
-          (github.event.inputs.build_type == 'release') ||
-          (startsWith(github.ref, 'refs/tags/v'))
-        uses: actions/upload-artifact@v4
-        with:
-          name: ambient-canvas-release-${{ github.sha }}
-          path: android/app/build/outputs/apk/release/app-release.apk
-          retention-days: 90
-
-      # ─── Summary ─────────────────────────────────────────────────────────
-      - name: Build summary
+      - name: How to install it
         run: |
-          echo "## ✅ Build Complete" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**App:** Ambient Canvas Overlay" >> $GITHUB_STEP_SUMMARY
-          echo "**App ID:** com.ambient.canvas.overlay" >> $GITHUB_STEP_SUMMARY
-          echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Sideload to Android TV" >> $GITHUB_STEP_SUMMARY
-          echo '```bash' >> $GITHUB_STEP_SUMMARY
-          echo "# With ADB over network (enable in TV Settings → Device Preferences → Developer options)" >> $GITHUB_STEP_SUMMARY
-          echo "adb connect <tv-ip>:5555" >> $GITHUB_STEP_SUMMARY
-          echo "adb install -r app-debug.apk" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## Debug APK ready"
+            echo
+            echo "Download the artifact above, then on a computer on the same network as the TV:"
+            echo
+            echo '```bash'
+            echo "adb connect <tv-ip>:5555"
+            echo "adb install -r app-debug.apk"
+            echo '```'
+            echo
+            echo "Enable ADB first under Settings → Device Preferences → Developer options."
+          } >> "$GITHUB_STEP_SUMMARY"

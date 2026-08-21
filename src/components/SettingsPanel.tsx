@@ -7,8 +7,10 @@ import { useEffect, useRef } from 'react';
 import { DisplaySection } from './settings/DisplaySection';
 import { MediaSection } from './settings/MediaSection';
 import { PowerSection } from './settings/PowerSection';
+import { UpdatesSection } from './settings/UpdatesSection';
 import { SensorPanel, type SensorPanelProps } from './SensorPanel';
 import type { Settings } from '../lib/settings';
+import type { UseAppUpdateResult } from '../hooks/useAppUpdate';
 
 export interface SettingsPanelProps {
   open: boolean;
@@ -25,6 +27,7 @@ export interface SettingsPanelProps {
   localCount: number;
   onToggleWeather: () => void;
   sensorPanel: SensorPanelProps;
+  update: UseAppUpdateResult;
 }
 
 export function SettingsPanel(props: SettingsPanelProps) {
@@ -43,6 +46,7 @@ export function SettingsPanel(props: SettingsPanelProps) {
     localCount,
     onToggleWeather,
     sensorPanel,
+    update,
   } = props;
 
   const panelRef = useRef<HTMLDivElement>(null);
@@ -108,6 +112,8 @@ export function SettingsPanel(props: SettingsPanelProps) {
         <PowerSection settings={settings} setSetting={setSetting} onInteract={onInteract} />
 
         <SensorPanel {...sensorPanel} />
+
+        <UpdatesSection update={update} onInteract={onInteract} />
 
         <div className="flex justify-end">
           <button

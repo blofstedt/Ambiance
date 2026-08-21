@@ -3,4 +3,9 @@
     <external-path name="my_images" path="." />
     <cache-path name="my_cache_images" path="." />
     <files-path name="ambient_media" path="ambient_media/" />
+    <!-- AND-10: where UpdateInstaller writes the downloaded APK. The system
+         package installer reads it back through this provider; it is in
+         internal storage, so nothing else on the TV can substitute it between
+         the checksum passing and the install starting. -->
+    <files-path name="ambient_updates" path="updates/" />
 </paths>
