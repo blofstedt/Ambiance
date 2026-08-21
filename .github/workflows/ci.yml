@@ -61,6 +61,15 @@ jobs:
           distribution: temurin
           java-version: 21
 
+      # Pin the Gradle CLI used to regenerate the wrapper JAR. ubuntu-latest
+      # now ships Gradle >= 9.6, which AGP 8.13 cannot run under (the wrapper
+      # task configures the project first and fails). Mirrors
+      # build-android-tv-apk.yml.
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.14.3
+
       - run: npm ci
 
       # BUILD-01: settings.gradle includes :capacitor-cordova-android-plugins,
