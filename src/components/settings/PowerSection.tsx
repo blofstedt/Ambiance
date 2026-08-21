@@ -77,9 +77,7 @@ export function PowerSection({ settings, setSetting, onInteract }: PowerSectionP
           }}
           className={cx(
             TOGGLE,
-            settings.blackModeEnabled
-              ? 'border-canvas-sage bg-black text-canvas-sage'
-              : TOGGLE_OFF,
+            settings.blackModeEnabled ? 'border-canvas-sage bg-black text-canvas-sage' : TOGGLE_OFF,
           )}
         >
           <EyeOff className="h-6 w-6" aria-hidden="true" />
@@ -145,7 +143,10 @@ export function PowerSection({ settings, setSetting, onInteract }: PowerSectionP
                   setSetting('oledSaverMinutes', minutes);
                   onInteract();
                 }}
-                className={cx(CHIP, settings.oledSaverMinutes === minutes ? CHIP_ON_SAGE : CHIP_OFF)}
+                className={cx(
+                  CHIP,
+                  settings.oledSaverMinutes === minutes ? CHIP_ON_SAGE : CHIP_OFF,
+                )}
               >
                 {minutes}
               </button>

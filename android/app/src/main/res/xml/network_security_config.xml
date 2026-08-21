@@ -4,29 +4,46 @@
       <base-config cleartextTrafficPermitted="true" />
   which re-enabled plaintext HTTP for the ENTIRE app, including the Unsplash /
   Open-Meteo / BigDataCloud calls, and made the domain-config above it
-  pointless. The <domain>local</domain> entry was also wrong: it matches the
-  hostname "local", not the ".local" mDNS suffix.
+  pointless.
 
-  Cleartext is now permitted only for RFC1918 / link-local addresses and the
-  mDNS suffix the sensor actually advertises. Everything else is HTTPS-only.
+  AND-10: the replacement did not work either, for a subtler reason. It listed
+      <domain includeSubdomains="true">192.168.0.0/16</domain>
+  and two other CIDR blocks. Android's network security config has no concept of
+  a CIDR range — <domain> matches a hostname or a single literal IP and nothing
+  else, so those three entries matched no host that has ever existed. Cleartext
+  was therefore denied to every sensor on a private address, and because
+  CapacitorHttp goes through HttpURLConnection it is bound by exactly this
+  policy. Every sensor read would have failed on-device with a cleartext-not-
+  permitted error while working perfectly in the browser.
+
+  There is no way to express "private ranges only" here — the ranges cannot be
+  enumerated and the sensor's address is not known until discovery finds it. So
+  the policy is inverted: cleartext is allowed by default (the sensor is on the
+  LAN and speaks plaintext by design; see section 7 of CLAUDE.md), and the
+  remote hosts this app actually contacts are pinned to HTTPS individually. That
+  gives real protection on every connection that leaves the house, which is the
+  only place it can matter.
 -->
 <network-security-config>
-    <base-config cleartextTrafficPermitted="false">
+    <base-config cleartextTrafficPermitted="true">
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>
     </base-config>
 
-    <domain-config cleartextTrafficPermitted="true">
-        <!-- mDNS: the sensor registers as ambient-<mac>.local -->
-        <domain includeSubdomains="true">local</domain>
-        <domain includeSubdomains="true">localhost</domain>
-
-        <!-- Private LAN ranges where an ESP32 sensor can live -->
-        <domain includeSubdomains="true">10.0.0.0/8</domain>
-        <domain includeSubdomains="true">172.16.0.0/12</domain>
-        <domain includeSubdomains="true">192.168.0.0/16</domain>
-        <!-- SoftAP pairing mode -->
-        <domain includeSubdomains="true">192.168.4.1</domain>
+    <!--
+      Every off-LAN host the app talks to. Downgrade attacks on these are
+      refused outright, regardless of what a URL in the bundle says.
+    -->
+    <domain-config cleartextTrafficPermitted="false">
+        <!-- Curated artwork -->
+        <domain includeSubdomains="true">images.unsplash.com</domain>
+        <!-- Weather and reverse geocoding -->
+        <domain includeSubdomains="true">api.open-meteo.com</domain>
+        <domain includeSubdomains="true">api.bigdatacloud.net</domain>
+        <!-- Over-the-air update checks and APK downloads -->
+        <domain includeSubdomains="true">api.github.com</domain>
+        <domain includeSubdomains="true">github.com</domain>
+        <domain includeSubdomains="true">objects.githubusercontent.com</domain>
     </domain-config>
 </network-security-config>

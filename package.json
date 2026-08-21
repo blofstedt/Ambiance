@@ -25,7 +25,7 @@
     "mock:sensor": "tsx mock/sensor-server.ts",
     "android:prepare": "npm run build && npx cap sync android",
     "android:open": "npx cap open android",
-    "verify": "npm run typecheck && npm run lint && npm run test && npm run build:only"
+    "verify": "npm run typecheck && npm run lint && npm run format:check && npm run test && npm run build:only"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.1",

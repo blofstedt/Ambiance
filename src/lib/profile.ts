@@ -64,11 +64,7 @@ export function bucketIndex(value: number, size: number): number {
  * Returns the bucket index to use, keeping `previous` unless the value has
  * moved decisively into a new bucket.
  */
-export function bucketWithHysteresis(
-  value: number,
-  size: number,
-  previous: number | null,
-): number {
+export function bucketWithHysteresis(value: number, size: number, previous: number | null): number {
   const raw = bucketIndex(value, size);
   if (previous === null || raw === previous) return raw;
 

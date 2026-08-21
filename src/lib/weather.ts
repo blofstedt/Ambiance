@@ -8,14 +8,7 @@
 import type { TemperatureUnit } from './types';
 
 export type WeatherIconName =
-  | 'clear'
-  | 'partly-cloudy'
-  | 'cloudy'
-  | 'fog'
-  | 'drizzle'
-  | 'rain'
-  | 'snow'
-  | 'thunderstorm';
+  'clear' | 'partly-cloudy' | 'cloudy' | 'fog' | 'drizzle' | 'rain' | 'snow' | 'thunderstorm';
 
 /**
  * WEB-10: the previous mapping was a chain of range checks that mis-sorted the

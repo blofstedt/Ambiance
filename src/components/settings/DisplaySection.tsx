@@ -5,7 +5,16 @@
 import { Clock, Cloud } from 'lucide-react';
 
 import { SettingTooltip, TvSlider } from '../TvSlider';
-import { CHIP, CHIP_OFF, CHIP_ON, SECTION_HEADING, TOGGLE, TOGGLE_OFF, TOGGLE_ON, cx } from '../ui/styles';
+import {
+  CHIP,
+  CHIP_OFF,
+  CHIP_ON,
+  SECTION_HEADING,
+  TOGGLE,
+  TOGGLE_OFF,
+  TOGGLE_ON,
+  cx,
+} from '../ui/styles';
 import { BRAND } from '../../lib/theme';
 import type { Settings } from '../../lib/settings';
 import type { OverlayFont, TemperatureUnit } from '../../lib/types';
@@ -168,7 +177,11 @@ export function DisplaySection(props: DisplaySectionProps) {
                 setSetting('temperatureUnit', unit);
                 onInteract();
               }}
-              className={cx(CHIP, 'uppercase', settings.temperatureUnit === unit ? CHIP_ON : CHIP_OFF)}
+              className={cx(
+                CHIP,
+                'uppercase',
+                settings.temperatureUnit === unit ? CHIP_ON : CHIP_OFF,
+              )}
             >
               °{unit}
             </button>

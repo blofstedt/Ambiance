@@ -71,36 +71,76 @@ export function save<T>(key: string, value: T): void {
 }
 
 /**
+ * Every live debouncedSave writer, flushed together when the WebView suspends.
+ *
+ * WEB-28: debouncedSave() used to add its own 'pagehide' and 'visibilitychange'
+ * listeners on every call and had no way to remove them. Each writer leaked two
+ * permanent listeners plus its captured closure, and the visibilitychange one
+ * was added with an inline arrow so it could never have been removed even by a
+ * caller that tried. On an appliance that stays up for weeks — with React
+ * StrictMode double-mounting in development — that grows without bound.
+ *
+ * One pair of listeners for the whole module, and a writer that can be
+ * released, fixes both.
+ */
+const flushers = new Set<() => void>();
+
+function flushAll(): void {
+  for (const flush of flushers) flush();
+}
+
+if (typeof window !== 'undefined') {
+  // Never lose the last write when the TV suspends the WebView.
+  window.addEventListener('pagehide', flushAll);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') flushAll();
+  });
+}
+
+/** A debounced writer plus the handles needed to flush or dispose of it. */
+export interface DebouncedWriter<T> {
+  (value: T): void;
+  /** Write any pending value immediately. */
+  flush: () => void;
+  /** Stop the timer and unregister from the suspend hooks. */
+  dispose: () => void;
+}
+
+/**
  * Returns a setter that writes at most once per `waitMs`, with a trailing
  * flush. Used for anything driven by the telemetry loop.
  */
-export function debouncedSave<T>(key: string, waitMs = 10_000): (value: T) => void {
+export function debouncedSave<T>(key: string, waitMs = 10_000): DebouncedWriter<T> {
   let timer: ReturnType<typeof setTimeout> | null = null;
   let pending: T | null = null;
   let hasPending = false;
 
   const flush = () => {
+    if (timer !== null) {
+      clearTimeout(timer);
+      timer = null;
+    }
     if (hasPending) {
       save(key, pending as T);
       hasPending = false;
       pending = null;
     }
-    timer = null;
   };
 
-  if (typeof window !== 'undefined') {
-    // Never lose the last write when the TV suspends the WebView.
-    window.addEventListener('pagehide', flush);
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden') flush();
-    });
-  }
-
-  return (value: T) => {
+  const write = ((value: T) => {
     pending = value;
     hasPending = true;
     if (timer === null) timer = setTimeout(flush, waitMs);
+  }) as DebouncedWriter<T>;
+
+  write.flush = flush;
+  write.dispose = () => {
+    flush();
+    flushers.delete(flush);
   };
+
+  flushers.add(flush);
+  return write;
 }
 
 /**

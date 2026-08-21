@@ -9,6 +9,7 @@ import { ArtworkCanvas } from './components/ArtworkCanvas';
 import { Dialog, useDialog } from './components/Dialog';
 import { Overlays } from './components/Overlays';
 import { SettingsPanel } from './components/SettingsPanel';
+import { useAppUpdate } from './hooks/useAppUpdate';
 import { useArtRotation } from './hooks/useArtRotation';
 import { useDisplayState } from './hooks/useDisplayState';
 import { useDreamPublisher } from './hooks/useDreamPublisher';
@@ -25,6 +26,7 @@ export default function App() {
   const dialog = useDialog();
   const network = useSensorNetwork();
   const weather = useWeather(settings.showWeather);
+  const update = useAppUpdate();
 
   const connected = network.connection === 'connected';
 
@@ -101,6 +103,16 @@ export default function App() {
 
   /* ------------------------------------------------------------- screensaver */
 
+  /*
+   * Hoisted out of the dependency array below. `art.current?.url` is a member
+   * expression, which react-hooks/exhaustive-deps cannot verify, so it insisted
+   * on the whole `art` object — and `art` is a fresh object every render, which
+   * would republish the screensaver snapshot on every single render instead of
+   * only when the picture actually changes.
+   */
+  const artworkUrl = art.current?.url ?? null;
+  const artworkTitle = art.current?.title ?? null;
+
   useDreamPublisher(
     useMemo(
       () => ({
@@ -115,8 +127,8 @@ export default function App() {
         weatherTemp: weather.temperatureC,
         weatherCode: weather.code,
         weatherLocation: weather.label,
-        artworkUrl: art.current?.url ?? null,
-        artworkTitle: art.current?.title ?? null,
+        artworkUrl,
+        artworkTitle,
       }),
       [
         network.telemetry,
@@ -130,8 +142,8 @@ export default function App() {
         weather.temperatureC,
         weather.code,
         weather.label,
-        art.current?.url,
-        art.current?.title,
+        artworkUrl,
+        artworkTitle,
       ],
     ),
   );
@@ -213,6 +225,7 @@ export default function App() {
         localCount={art.localCount}
         onToggleWeather={() => void handleToggleWeather()}
         sensorPanel={sensorPanel}
+        update={update}
       />
 
       {/*

@@ -21,20 +21,30 @@ export interface ArtworkCanvasProps {
 export function ArtworkCanvas({ artwork, luminance, warmth, grainIntensity }: ArtworkCanvasProps) {
   const [failed, setFailed] = useState(false);
 
+  /*
+   * The URL is hoisted out of the effect rather than listed as `artwork?.url`
+   * in the dependency array. Only the URL matters here, and a member
+   * expression in a dependency array is exactly the pattern
+   * react-hooks/exhaustive-deps cannot verify — it demanded the whole
+   * `artwork` object, which would re-run this probe (and flash the fallback
+   * text) every time an unrelated field changed identity.
+   */
+  const artworkUrl = artwork?.url ?? null;
+
   // WEB-16: detect a dead remote image so we can say so instead of showing a
   // black rectangle and letting the user assume the app is broken.
   useEffect(() => {
     setFailed(false);
-    if (!artwork) return;
+    if (!artworkUrl) return;
 
     const image = new Image();
     image.onerror = () => setFailed(true);
-    image.src = artwork.url;
+    image.src = artworkUrl;
 
     return () => {
       image.onerror = null;
     };
-  }, [artwork?.url]);
+  }, [artworkUrl]);
 
   const overlayOpacity = luminance / 100;
   const warmColor = `rgba(255, ${Math.round(200 + (warmth / 500) * 55)}, ${Math.round(
@@ -51,7 +61,7 @@ export function ArtworkCanvas({ artwork, luminance, warmth, grainIntensity }: Ar
          * the 2.5s crossfade never ran — local albums hard-cut between photos
          * while curated art faded. Keying on the URL is stable and unique.
          */
-        key={artwork?.url ?? 'empty'}
+        key={artworkUrl ?? 'empty'}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}

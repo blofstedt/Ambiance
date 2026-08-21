@@ -2,7 +2,9 @@ package com.ambient.canvas.overlay;
 
 import android.Manifest;
 import android.content.SharedPreferences;
+import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.WindowManager;
 import android.webkit.GeolocationPermissions;
@@ -27,9 +29,14 @@ public class MainActivity extends BridgeActivity {
     private GeolocationPermissions.Callback pendingGeoCallback;
     private String pendingGeoOrigin;
 
+    /** AND-11: over-the-air updates. See UpdateInstaller. */
+    private UpdateInstaller updateInstaller;
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        updateInstaller = new UpdateInstaller(this);
 
         if (getBridge() != null && getBridge().getWebView() != null) {
             // AND-06: expose a minimal, local-assets-only JS interface. The web
@@ -97,6 +104,15 @@ public class MainActivity extends BridgeActivity {
         pendingGeoOrigin = null;
     }
 
+    /** The running build's own version, for the update check to compare against. */
+    private PackageInfo selfPackageInfo() {
+        try {
+            return getPackageManager().getPackageInfo(getPackageName(), 0);
+        } catch (PackageManager.NameNotFoundException e) {
+            return null;
+        }
+    }
+
     /** Minimal native surface. Only reachable from bundled local assets. */
     private class AmbientNativeBridge {
 
@@ -118,6 +134,54 @@ public class MainActivity extends BridgeActivity {
         @JavascriptInterface
         public boolean isNativeHost() {
             return true;
+        }
+
+        /* ------------------------------------------------- AND-11: updates */
+
+        @JavascriptInterface
+        public String getVersionName() {
+            PackageInfo info = selfPackageInfo();
+            return info == null || info.versionName == null ? "" : info.versionName;
+        }
+
+        @JavascriptInterface
+        public long getVersionCode() {
+            PackageInfo info = selfPackageInfo();
+            if (info == null) return 0;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                return info.getLongVersionCode();
+            }
+            return info.versionCode;
+        }
+
+        @JavascriptInterface
+        public void startUpdateDownload(String url, String sha256, String versionName) {
+            updateInstaller.start(url, sha256, versionName);
+        }
+
+        @JavascriptInterface
+        public String getUpdateStatus() {
+            return updateInstaller.getStatusJson();
+        }
+
+        @JavascriptInterface
+        public void installDownloadedUpdate() {
+            updateInstaller.install();
+        }
+
+        @JavascriptInterface
+        public void cancelUpdateDownload() {
+            updateInstaller.cancel();
+        }
+
+        @JavascriptInterface
+        public boolean canInstallPackages() {
+            return updateInstaller.canInstallPackages();
+        }
+
+        @JavascriptInterface
+        public void openInstallPermissionSettings() {
+            updateInstaller.openInstallPermissionSettings(MainActivity.this);
         }
     }
 }

@@ -24,6 +24,12 @@
     <!-- Required for mDNS / NSD discovery of the ambient sensor (WEB-04). -->
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
 
+    <!-- AND-11: over-the-air updates. This does NOT let the app install
+         anything on its own — Android still shows its own installer and the
+         user still confirms. Without the permission that installer closes
+         instantly with no message, which on a TV looks like a crash. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"

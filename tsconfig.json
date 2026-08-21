@@ -12,7 +12,11 @@
     "jsx": "react-jsx",
     "types": ["vite/client"],
 
-    "//": "BUILD-05: strict was entirely absent. TvSlider took `any` props, NodeJS.Timeout was used in browser code, and nothing caught the null/undefined paths behind several runtime bugs in this audit.",
+    /*
+     * BUILD-05: strict was entirely absent. TvSlider took `any` props,
+     * NodeJS.Timeout was used in browser code, and nothing caught the
+     * null/undefined paths behind several runtime bugs in this audit.
+     */
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,

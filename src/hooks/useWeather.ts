@@ -7,13 +7,7 @@ import { fetchWeather, getCurrentPosition } from '../lib/weather';
 
 const REFRESH_MS = 15 * 60 * 1000;
 
-export type WeatherStatus =
-  | 'disabled'
-  | 'locating'
-  | 'ready'
-  | 'denied'
-  | 'unavailable'
-  | 'error';
+export type WeatherStatus = 'disabled' | 'locating' | 'ready' | 'denied' | 'unavailable' | 'error';
 
 export interface UseWeatherResult {
   status: WeatherStatus;

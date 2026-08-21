@@ -170,3 +170,108 @@ that already existed in the code.
 - Added a "three files that control almost everything" design table.
 - All 40 file paths referenced in `CLAUDE.md` verified to resolve.
 - `@file` orientation headers on all 39 source files.
+
+---
+
+## 1.2.0 — Review pass, and updates over the air (2026-08-21)
+
+Verification performed in a real environment this time: `npm ci`, `npm run
+verify` (typecheck, lint, 62 tests across 6 suites, Vite build) all green. The
+Android and firmware builds still run only in CI — see **Not verified** below.
+
+### P0 — The verify pipeline could not run at all
+
+Everything below was red before this pass, which means every gate downstream of
+it had never executed on anything.
+
+| ID | Fix | Where |
+| --- | --- | --- |
+| **BUILD-08** | Regenerated `package-lock.json`. It was out of sync with `package.json`, so `npm ci` aborted with "Missing: balanced-match@1.0.2 from lock file" — and `npm ci` is the first step of all three CI jobs, so **nothing in CI had run since the lockfile drifted**. | `package-lock.json` |
+| **BUILD-09** | Moved the `"//"` comment out of `compilerOptions`. TypeScript rejects unknown compiler options outright (TS5023), so `npm run typecheck` failed on the config before reading a line of source. | `tsconfig.json` |
+| **BUILD-10** | Turned `no-undef` off for TypeScript files. `globals` was a hand-written list of ~20 browser names, and every DOM type the code actually uses — `File`, `KeyboardEvent`, `HTMLElement`, `AbortSignal`, `URLSearchParams`, `React` — was absent from it, so lint failed with 33 errors. Maintaining a shadow copy of `lib.dom.d.ts` by hand is not the fix; `tsc` already performs this check against the real thing, which is what typescript-eslint's own documentation recommends. | `eslint.config.js` |
+
+### P1 — Wrong behaviour
+
+| ID | Fix | Where |
+| --- | --- | --- |
+| **AND-10** | Rewrote the cleartext policy. AND-08 expressed the private ranges as CIDR blocks (`192.168.0.0/16` and two others), but Android's `<domain>` element has no concept of a range — it matches a hostname or a single literal IP, so those entries matched nothing that has ever existed. Cleartext was denied to every sensor on a private address, and since CapacitorHttp goes through `HttpURLConnection` it is bound by exactly this policy: **every sensor read would have failed on-device while working perfectly in dev.** The ranges cannot be enumerated, so the policy is inverted — cleartext by default, with each remote host the app contacts pinned to HTTPS individually. | `network_security_config.xml` |
+| **WEB-27** | `useSettings`' flush effect depended on `[settings]` and called `saveSettings()` from its own cleanup. React runs a cleanup before every re-run, so each tick of a slider drag forced a synchronous whole-document `localStorage` write — of the *previous* value, since the cleanup closes over its own render. That is exactly what the 400ms debounce immediately above it exists to prevent, and it undid it completely. | `src/hooks/useSettings.ts` |
+| **WEB-28** | `debouncedSave()` added a `pagehide` and a `visibilitychange` listener on every call and had no way to remove either — the second via an inline arrow, so no caller could have removed it even by trying. One module-level pair now, plus a writer that can be disposed. This is the leak class CLAUDE.md §5 exists to prevent: invisible on a laptop, a crash on an appliance left up for weeks. | `src/lib/storage.ts`, `src/hooks/useSensorNetwork.ts` |
+| **WEB-29** | The native HTTP path ignored `AbortSignal` entirely. On the TV — the only platform that takes it — cancelling a discovery scan therefore did nothing at all, meaning **the AbortController that WEB-04's fix is built on only ever worked in the browser**. A rescan left up to 254 probes in flight to land on state that had already moved on. | `src/lib/http.ts` |
+| **WEB-30** | Nothing but sensor motion could reset the OLED saver timer. With no sensor paired, or one that had dropped off the network, there was no signal that could: the clock and weather faded to 20% a few minutes after launch and stayed there for good, and pressing keys on the remote did not bring them back. Remote input now counts as presence, throttled to once per 10s. | `src/hooks/useDisplayState.ts` |
+
+### P2 — Polish
+
+- `useConstant` added. `useRef(new Thing())` evaluates its argument on every
+  render and discards all but the first result; it was holding both EMA filters,
+  the motion ring buffer and the media library, in components that re-render
+  once a second for the life of the app.
+- The two genuine `react-hooks/exhaustive-deps` errors fixed at the source
+  rather than silenced, per CLAUDE.md §6. Both were member expressions
+  (`artwork?.url`, `art.current?.url`) that the rule cannot verify, hoisted to
+  locals. In `App.tsx` obeying the rule literally would have republished the
+  screensaver snapshot on every render.
+- `detectLocalAddress()` no longer raises an unhandled rejection when
+  `createOffer()` fails, and returns immediately instead of making the caller
+  wait out the full timeout for a `null` it could have had at once.
+- Removed `metadata.json`, an AI Studio leftover referenced by nothing.
+  BUILD-07 recorded it as deleted; it was not.
+
+### Over the air updates
+
+| ID | What |
+| --- | --- |
+| **AND-11** | The app updates itself from GitHub Releases. `release.yml` builds a signed APK and publishes it alongside an `update.json` manifest; the TV checks daily, compares `versionCode`, verifies the SHA-256 and hands the file to Android's own installer. |
+
+Split so the risky parts are the testable parts:
+
+- `src/lib/updates.ts` — pure, no React, no native, no fetch. Version
+  comparison and release parsing, including the two refusals that matter: an
+  APK served from a host we did not publish to, and a manifest describing a
+  different build than the release actually carries. 22 tests.
+- `src/hooks/useAppUpdate.ts` — the check (45s after boot, then daily) and a
+  status poll that only runs while a download does.
+- `UpdateInstaller.java` — the work Android will not let a WebView do. Re-checks
+  host and scheme at **every redirect hop**, because GitHub redirects release
+  assets to object storage and an open redirect would otherwise walk straight
+  past the allowlist. Caps the write so a server lying about `Content-Length`
+  cannot fill the TV's disk. Deletes rather than installs an APK whose digest
+  does not match.
+- `release.yml` — refuses to build without signing secrets and verifies the
+  finished APK with `apksigner`. An unsigned release installs exactly once and
+  can then never be updated, which is worse than a failed build.
+
+`versionCode` comes from `github.run_number`, which only ever increases. It is
+the value Android's package manager itself compares, so a name-derived scheme
+would let a release install on some televisions and silently fail on others.
+
+Nothing installs unattended. The app offers, Android's installer asks, a person
+confirms.
+
+**Signing key discipline is now load-bearing.** Every release must be signed
+with the same key or televisions will refuse the update and the only way
+forward is an uninstall, losing every setting and paired sensor. `docs/RELEASING.md`
+covers the setup.
+
+### Housekeeping
+
+- **BUILD-11** — `format:check` existed as a script but nothing ever ran it, so
+  14 files had drifted out of Prettier style. Formatted, and the check joined
+  `npm run verify` and CI so it cannot drift again.
+
+- The **Sideload APK** workflow was a step-for-step duplicate of `ci.yml`'s
+  android job running on every push, so each push paid for two identical Gradle
+  builds. It is manual-only now. It also still passed `GEMINI_API_KEY` into the
+  build — nothing has read that key since BUILD-04 removed the `define` that
+  inlined it — and carried two `sed` commands that rewrote `AndroidManifest.xml`
+  in place. The manifest has had all three of those tags since AND-02, so the
+  greps guarding them never fired.
+
+### Not verified here
+
+- The Android build and the firmware compile still run only in CI. `UpdateInstaller.java`
+  is new and has not executed on a device; the download, checksum and install
+  path needs one real release to confirm end to end.
+- `npm audit` reports 11 advisories, all in dev-only transitive dependencies
+  (babel, esbuild, postcss, tar). None reach the APK. Left alone rather than
+  forcing majors in the same pass as a behaviour audit.

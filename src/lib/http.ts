@@ -84,7 +84,25 @@ function parseBody<T>(data: unknown): T | null {
   return data as T;
 }
 
+const ABORTED: HttpResult<never> = { ok: false, status: 0, data: null, error: 'aborted' };
+
+/**
+ * WEB-29: this path ignored `options.signal` entirely.
+ *
+ * That mattered more than it looks. CapacitorHttp has no cancellation API, so
+ * on the actual TV — the only platform that takes this path — aborting a
+ * discovery scan did nothing at all: the AbortController that WEB-04's fix is
+ * built on was a no-op in production and only ever worked in the browser.
+ * A rescan, or closing the settings panel mid-sweep, left up to 254 probes in
+ * flight to land on state that had already moved on.
+ *
+ * The request itself still cannot be recalled once handed to the native layer,
+ * but honouring the signal on both sides of it is what actually stops a sweep:
+ * the batch in flight is discarded and no further batch is ever issued.
+ */
 async function viaNative<T>(url: string, options: RequestOptions): Promise<HttpResult<T>> {
+  if (options.signal?.aborted) return ABORTED;
+
   const response = await CapacitorHttp.request({
     url,
     method: options.method ?? 'GET',
@@ -96,6 +114,8 @@ async function viaNative<T>(url: string, options: RequestOptions): Promise<HttpR
     disableRedirects: false,
   });
 
+  if (options.signal?.aborted) return ABORTED;
+
   return {
     ok: response.status >= 200 && response.status < 300,
     status: response.status,
@@ -104,6 +124,8 @@ async function viaNative<T>(url: string, options: RequestOptions): Promise<HttpR
 }
 
 async function viaFetch<T>(url: string, options: RequestOptions): Promise<HttpResult<T>> {
+  if (options.signal?.aborted) return ABORTED;
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? DEFAULT_TIMEOUT);
 
