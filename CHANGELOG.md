@@ -336,3 +336,42 @@ sets that still expose Settings → System → Screensaver, list it normally.
 - `AND-15` and `AND-16` are dream-lifecycle fixes. The pure URL logic is unit
   tested; whether a given TV lets you select the screensaver at all can only be
   answered on that TV.
+
+---
+
+## 1.3.1 — A way past a TV that hides third-party screensavers (2026-08-21)
+
+1.3.0 closed by saying the Google TV restriction could not be worked around.
+That was too quick. The restriction is real, but it is narrower than it looks.
+
+**What is actually blocked.** `DreamManagerService` — the part of Android that
+runs screensavers — reads four `Settings.Secure` keys and does not care who
+wrote them. It has no opinion about third-party dreams. The block lives in the
+Settings *UI*: on Chromecast with Google TV and several Sony/TCL sets, the
+picker only ever lists Google's Backdrop. So the screensaver works on those
+devices; the user just has no way to select it.
+
+| ID | Fix | Where |
+| --- | --- | --- |
+| **AND-17** | The app can now select itself, writing the `screensaver_components`, `screensaver_enabled`, `screensaver_activate_on_sleep` and `screensaver_activate_on_dock` Secure keys directly and bypassing the picker entirely. This needs `WRITE_SECURE_SETTINGS`, which no app can be granted by being installed — it carries the framework's `development` protection flag, so only the owner of the device can turn it on, deliberately, from a computer. Declaring it in the manifest is what makes that possible at all; an undeclared permission cannot be granted. Until it is, `holdsWriteSecureSettings()` is false, nothing is written, and the UI keeps pointing at the system picker. | `AndroidManifest.xml`, `MainActivity.java` |
+| **AND-17** | The app had no idea whether the screensaver was actually on. It offered to open the picker and then said nothing — and on a TV that hides the entry, the user would have followed the instructions, found nothing, and had no way to tell whether it had worked. The system setting is now read back, so Power & Sleep states plainly where things stand: on, off, or not determinable. | `MainActivity.java`, `src/hooks/useScreensaverStatus.ts` |
+| **AND-17** | Power & Sleep's screensaver card became its own component with three states: confirmed on (sage, the colour the rest of that section already uses for a settled state); off but assignable, which is one button press; and off and not assignable, which offers the picker plus a collapsible explanation of how to unlock the direct route. That explanation ends with the option that needs nothing at all — leave the app open, since it already holds the screen awake and shows the art itself. | `src/components/settings/ScreensaverCard.tsx`, `PowerSection.tsx` |
+| **AND-17** | The unlock instructions print the package name read at runtime rather than a hardcoded one. Debug builds carry a `.debug` `applicationIdSuffix`, and an adb command naming the wrong package silently grants nothing and reports success. | `MainActivity.java`, `ScreensaverCard.tsx` |
+
+The status is polled while the settings menu is open, since it changes outside
+this app entirely, and re-read whenever the TV hands focus back. The polled
+value is only committed when a field actually differs — otherwise the whole
+settings panel would rebuild every three seconds for a reading that changes
+perhaps once in the appliance's life.
+
+### Not verified here
+
+- Whether `DreamManagerService` on a specific locked-down Google TV honours a
+  third-party component written into `screensaver_components` can only be
+  answered on such a device. The reasoning is sound and the mechanism is the
+  documented one, but it has not run on hardware. If a TV turns out to refuse
+  it, `assignScreensaver()` re-reads the setting rather than trusting its own
+  write, so the app will say the change did not take instead of claiming
+  success.
+- `readScreensaverStatus()`'s parsing is unit tested, including malformed and
+  wrongly-typed replies. The Java side is not; it runs only on a device.

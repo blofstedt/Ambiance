@@ -16,6 +16,10 @@ interface AmbientNativeBridge {
   isNativeHost(): boolean;
   /** Opens the system screensaver picker. False when no such screen exists. */
   openScreensaverSettings?(): boolean;
+  /** JSON-encoded ScreensaverStatus. */
+  getScreensaverStatus?(): string;
+  /** Selects this app's screensaver directly. False without the adb grant. */
+  assignScreensaver?(): boolean;
 
   /* --- over-the-air updates (see lib/updates.ts and UpdateInstaller.java) --- */
   getVersionName?(): string;
@@ -122,6 +126,55 @@ export function canOpenScreensaverSettings(): boolean {
 export function openScreensaverSettings(): boolean {
   try {
     return bridge()?.openScreensaverSettings?.() ?? false;
+  } catch {
+    return false;
+  }
+}
+
+/** Whether the screensaver is on, and whether this app can switch it on itself. */
+export interface ScreensaverStatus {
+  /** This app's screensaver is the one the TV is set to run. */
+  selected: boolean;
+  /** The system setting could be read at all. False means "cannot tell". */
+  known: boolean;
+  /** The app can select itself without the system picker (see AND-17). */
+  canAssign: boolean;
+  /** Runtime package name. Debug builds carry a `.debug` suffix. */
+  packageName: string;
+}
+
+export const UNKNOWN_SCREENSAVER_STATUS: ScreensaverStatus = {
+  selected: false,
+  known: false,
+  canAssign: false,
+  packageName: '',
+};
+
+export function readScreensaverStatus(): ScreensaverStatus {
+  const target = bridge();
+  if (!target?.getScreensaverStatus) return UNKNOWN_SCREENSAVER_STATUS;
+
+  try {
+    const parsed = JSON.parse(target.getScreensaverStatus()) as Partial<ScreensaverStatus>;
+    return {
+      selected: parsed.selected === true,
+      known: parsed.known === true,
+      canAssign: parsed.canAssign === true,
+      packageName: typeof parsed.packageName === 'string' ? parsed.packageName : '',
+    };
+  } catch {
+    return UNKNOWN_SCREENSAVER_STATUS;
+  }
+}
+
+/**
+ * AND-17: selects this app's screensaver directly, for TVs whose settings UI
+ * refuses to list third-party screensavers. Returns false unless the device
+ * owner has granted the app that right; the UI falls back to the picker.
+ */
+export function assignScreensaver(): boolean {
+  try {
+    return bridge()?.assignScreensaver?.() ?? false;
   } catch {
     return false;
   }
