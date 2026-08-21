@@ -33,7 +33,7 @@ remembers that for every future evening.
 
 ## Running the app
 
-**Prerequisites:** Node.js 20.19 or newer.
+**Prerequisites:** Node.js 22 or newer (the Capacitor CLI requires it).
 
 ```bash
 npm ci

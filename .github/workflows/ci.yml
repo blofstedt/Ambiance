@@ -19,7 +19,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - run: npm ci
@@ -58,7 +58,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - uses: actions/setup-java@v4
@@ -100,17 +100,33 @@ jobs:
           path: android/app/build/outputs/apk/debug/*.apk
           retention-days: 7
 
+  # FW-03 was a compile error that shipped undetected because nothing ever built
+  # the firmware in CI. This job exists so that cannot recur — which only works
+  # if it actually runs; see BUILD-12 below.
   firmware:
     name: Firmware (compile)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      # FW-03 was a compile error that shipped undetected because nothing ever
-      # built the firmware in CI. This job exists so that cannot recur.
+      # BUILD-12: this passed `-b /usr/local/bin`, borrowing a flag convention
+      # from other Go installers that arduino-cli's install.sh does not have.
+      # Its first positional argument is the VERSION TAG, so `-b` was taken as
+      # the version and the script built the download URL
+      #   arduino-cli_-b_Linux_64bit.tar.gz
+      # which 404s. The install directory comes from the BINDIR environment
+      # variable instead, and `/usr/local/bin` was silently ignored — the script
+      # reported "Installing in $PWD/bin" the whole time.
       - name: Install arduino-cli
         run: |
-          curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh -s -- -b /usr/local/bin
+          set -o pipefail
+          mkdir -p "$HOME/.local/bin"
+          curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh \
+            | BINDIR="$HOME/.local/bin" sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          # GITHUB_PATH only affects later steps, so verify by full path here.
+          # A broken install must fail now, not three steps downstream.
+          "$HOME/.local/bin/arduino-cli" version
 
       - name: Install ESP32 core and libraries
         run: |

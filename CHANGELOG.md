@@ -267,6 +267,17 @@ covers the setup.
   in place. The manifest has had all three of those tags since AND-02, so the
   greps guarding them never fired.
 
+### CI could not run either (found once CI finally executed)
+
+Fixing the lockfile let CI reach the two jobs that had never actually run. Both
+were broken, and neither had anything to do with the code they were meant to
+gate.
+
+| ID | Fix | Where |
+| --- | --- | --- |
+| **BUILD-12** | The firmware job installed arduino-cli with `sh -s -- -b /usr/local/bin`, borrowing a flag convention from other Go installers that `install.sh` does not have. Its first positional argument is the **version tag**, so `-b` became the version and the script requested `arduino-cli_-b_Linux_64bit.tar.gz`, which 404s — "Failed to install arduino-cli". The install directory comes from the `BINDIR` environment variable, and `/usr/local/bin` was ignored throughout: the script reported "Installing in $PWD/bin" every time. Fixed, and the step now runs `arduino-cli version` so a broken install fails immediately rather than three steps later. | `.github/workflows/ci.yml` |
+| **BUILD-13** | Every workflow pinned Node 20. The Capacitor 8 CLI requires `>=22.0.0` and refuses to start below it, so the Android job died at `cap sync` with "The Capacitor CLI requires NodeJS >=22.0.0" — before Gradle was ever invoked. All four pins raised to 22. `engines.node` said `>=20.19.0`, understating the real floor, which is what let the wrong pin look correct. | `.github/workflows/*.yml`, `package.json`, `README.md` |
+
 ### Not verified here
 
 - The Android build and the firmware compile still run only in CI. `UpdateInstaller.java`
