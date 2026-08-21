@@ -286,3 +286,53 @@ gate.
 - `npm audit` reports 11 advisories, all in dev-only transitive dependencies
   (babel, esbuild, postcss, tar). None reach the APK. Left alone rather than
   forcing majors in the same pass as a behaviour audit.
+
+---
+
+## 1.3.0 — Screensaver blockers and a real app icon (2026-08-21)
+
+Two questions: would the screensaver actually work if a TV selected it, and why
+does the launcher icon look unfinished. Both had substantive answers.
+
+### The screensaver
+
+`AmbientDreamService` was registered correctly and would have been offered by
+the system picker, but three things meant it could not do its job once chosen.
+
+| ID | Fix | Where |
+| --- | --- | --- |
+| **AND-15** | The screensaver framed an empty rectangle. It renders in a second WebView on a `file://` origin, while the app publishes `artworkUrl` from its own `https://localhost` origin — a host served by Capacitor's local server *inside the app's WebView only*, and therefore unreachable from the dream. A local album is worse: `blob:` URLs are scoped to the document that created them and are dead everywhere else, and a `data:` URL would exceed the 64 KB cap in `saveDreamState`, which silently drops the **whole** snapshot, losing the clock and weather settings with it. Snapshots now carry a document-relative path the dream resolves against its own base, and unshareable URLs are dropped so the dream falls back to bundled art. | `src/lib/artwork.ts`, `src/lib/native.ts`, `tests/artwork.test.ts` |
+| **AND-16** | `onDreamingStopped` called `WebView.pauseTimers()`, which is documented as **global** — it pauses layout, parsing and JavaScript timers for every WebView in the process. The dream and the main activity share a process, so ending the screensaver froze the app itself: the clock stopped and sensor polling stopped. Replaced with the per-WebView `onPause()`; the WebView is destroyed immediately afterwards anyway, which is what actually stops its timers. | `AmbientDreamService.java` |
+| **AND-16** | `destroy()` was being called on a still-attached WebView. `removeAllViews()` removes a WebView's *children*, not the WebView from its parent. Detached from the real parent first, and `addContentView` replaced with `setContentView`. | `AmbientDreamService.java` |
+| **AND-16** | Nothing in the app told the user a screensaver must be selected in the TV's own settings, and that screen is buried and differently named on every brand. Power & Sleep now offers **Open TV Settings**, which launches the system screensaver picker directly, falling back to display settings and then the settings root. | `MainActivity.java`, `src/lib/native.ts`, `src/components/settings/PowerSection.tsx` |
+| **AND-16** | Added `CATEGORY_DEFAULT` to the dream's intent filter. The platform picker queries with a bare action, but several TV launchers and OEM settings apps add the category — and without it the service is simply absent from their list. | `AndroidManifest.xml` |
+| **AND-16** | `previewImage` was the 1:1 adaptive launcher icon, shown letterboxed or stretched in the picker's 16:9 slot. It is the TV banner now. | `res/xml/ambient_dream.xml` |
+| **AND-15** | If the snapshot's picture is remote and the WAN link is down, `ArtworkCanvas` renders its "could not be loaded" message — which would then sit on the screen all night. `DreamView` probes the image first and quietly falls back to bundled art. A screensaver must never display an error. | `src/DreamView.tsx` |
+
+### The app icon
+
+| ID | Fix | Where |
+| --- | --- | --- |
+| **AND-14** | Redrew the launcher mark. The old one spanned x=14..94 and y=34..86 of the 108dp canvas, but only the inner 72dp survives a launcher mask and a circular mask trims that to a 66dp circle — so its corners were sliced off and the composition sat visibly off-centre on every round or squircle launcher. It also placed a `#1A1D14` bar on a `#11140F` background, which is invisible. The new framed-canvas mark is centred on (54,54) with its furthest painted point 31dp from that centre, so it is never clipped on any mask. | `res/drawable/ic_launcher_foreground.xml` |
+| **AND-14** | `drawable/ic_launcher_background.xml` was still the stock Android Studio teal grid from project generation, referenced by nothing. It is now the real adaptive background: brand ink lifted by a diagonal wash so the gilt frame reads against depth rather than a flat block. The flat `@color/ic_launcher_background` it replaced is deleted. | `res/drawable/ic_launcher_background.xml`, `res/mipmap-anydpi-v26/*` |
+| **AND-14** | The TV banner was a `<layer-list>` insetting the 108dp square icon by 90dp on each side. Insets apply to the *container* bounds, so on a 320x180 banner the square mark was squeezed into a 140x120 box and stretched non-uniformly — visibly distorted on the home row, with the app name nowhere on it. It is now a true 320x180 banner: the mark at its real aspect ratio, a hairline rule, and the wordmark set in a serif matching the app's overlay typography. Letterforms are committed as outlines, so the banner needs no font at runtime and the repo stays free of binaries. | `res/drawable/tv_banner.xml` |
+| **AND-14** | The application element now carries `android:banner` as well as the activity, and the duplicate `drawable-v24` copy of the foreground vector is gone — it shadowed the base copy on every device (minSdk is 26) so the two could silently drift. | `AndroidManifest.xml`, `res/drawable-v24/` |
+
+### Not fixed, because it cannot be
+
+Some Google TV devices — Chromecast with Google TV and several Sony/TCL sets —
+restrict the ambient screen to Google's own Backdrop and never surface
+third-party dreams in the picker at all. On those the app is a normal app that
+happens to also register a screensaver nobody can select. Nothing in the APK
+changes that; it is a platform decision. Plain Android TV sets, and Google TV
+sets that still expose Settings → System → Screensaver, list it normally.
+
+### Not verified here
+
+- The Android build still runs only in CI. No Android SDK is present in this
+  environment, so `aapt2` has not compiled these resources — the vector
+  drawables were checked for well-formedness and against the documented schema,
+  and rendered to confirm they look right, but the packaging step is CI's.
+- `AND-15` and `AND-16` are dream-lifecycle fixes. The pure URL logic is unit
+  tested; whether a given TV lets you select the screensaver at all can only be
+  answered on that TV.

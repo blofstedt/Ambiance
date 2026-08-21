@@ -7,12 +7,15 @@
  * runs identically during development.
  */
 
+import { portableArtworkUrl, resolveArtworkUrl } from './artwork';
 import type { Telemetry } from './types';
 
 interface AmbientNativeBridge {
   saveDreamState(json: string): void;
   setKeepAwake(enabled: boolean): void;
   isNativeHost(): boolean;
+  /** Opens the system screensaver picker. False when no such screen exists. */
+  openScreensaverSettings?(): boolean;
 
   /* --- over-the-air updates (see lib/updates.ts and UpdateInstaller.java) --- */
   getVersionName?(): string;
@@ -71,7 +74,14 @@ export function publishDreamState(state: DreamState): void {
   const target = bridge();
   if (!target) return;
   try {
-    target.saveDreamState(JSON.stringify(state));
+    // AND-15: rewrite the picture's address into something the dream's
+    // file:// WebView can actually load. See portableArtworkUrl.
+    const origin = typeof window === 'undefined' ? '' : window.location.origin;
+    const portable: DreamState = {
+      ...state,
+      artworkUrl: portableArtworkUrl(state.artworkUrl, origin),
+    };
+    target.saveDreamState(JSON.stringify(portable));
   } catch {
     /* bridge unavailable; nothing to do */
   }
@@ -91,6 +101,27 @@ export function isDreamMode(): boolean {
   if (typeof window === 'undefined') return false;
   try {
     return new URLSearchParams(window.location.search).get('dream') === '1';
+  } catch {
+    return false;
+  }
+}
+
+/* -------------------------------------------------------------- screensaver */
+
+/**
+ * AND-16: a DreamService does nothing until the user selects it in the system
+ * screensaver settings, and that screen is buried and differently named on
+ * every TV brand. The app now offers to open it directly — but only where such
+ * a screen can exist, so a browser never shows a button that cannot work.
+ */
+export function canOpenScreensaverSettings(): boolean {
+  return Boolean(bridge()?.openScreensaverSettings);
+}
+
+/** True when a settings screen actually opened. */
+export function openScreensaverSettings(): boolean {
+  try {
+    return bridge()?.openScreensaverSettings?.() ?? false;
   } catch {
     return false;
   }
@@ -210,7 +241,13 @@ export function openInstallPermissionSettings(): void {
 
 export function readInjectedDreamState(): DreamState | null {
   if (typeof window === 'undefined') return null;
-  return window.__AMBIENT_DREAM_STATE__ ?? null;
+  const state = window.__AMBIENT_DREAM_STATE__;
+  if (!state) return null;
+
+  // AND-15: the app published a document-relative path; resolve it against the
+  // dream's own document (file:///android_asset/public/index.html).
+  const base = typeof document === 'undefined' ? '' : document.baseURI;
+  return { ...state, artworkUrl: resolveArtworkUrl(state.artworkUrl, base) };
 }
 
 /** Age of the injected snapshot, used to avoid presenting stale data as live. */

@@ -2,10 +2,11 @@
  * @file Settings > Power: sleep timer, black mode, motion sensitivity, OLED saver. VISUAL.
  */
 
-import { EyeOff, Sun } from 'lucide-react';
+import { EyeOff, MonitorPlay, Sun } from 'lucide-react';
 
 import { SettingTooltip, TvSlider } from '../TvSlider';
 import {
+  BUTTON_PRIMARY,
   CHIP,
   CHIP_OFF,
   CHIP_ON_SAGE,
@@ -15,6 +16,7 @@ import {
   TOGGLE_ON,
   cx,
 } from '../ui/styles';
+import { canOpenScreensaverSettings, openScreensaverSettings } from '../../lib/native';
 import { BRAND } from '../../lib/theme';
 import type { Settings } from '../../lib/settings';
 
@@ -103,6 +105,38 @@ export function PowerSection({ settings, setSetting, onInteract }: PowerSectionP
           </span>
         </button>
       </div>
+
+      {/*
+        AND-16: the screensaver is a system-level choice, not an app setting, so
+        it sits apart from the toggles above rather than pretending to be one.
+      */}
+      {canOpenScreensaverSettings() && (
+        <div className="flex flex-col items-start gap-5 rounded-xl border border-canvas-gold/25 bg-canvas-gold/5 p-6 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-start gap-4">
+            <MonitorPlay className="mt-1 h-6 w-6 shrink-0 text-canvas-gold" aria-hidden="true" />
+            <div className="space-y-1">
+              <p className="text-tv-xs font-bold tracking-widest text-canvas-gold uppercase">
+                Use As Screensaver
+              </p>
+              <p className="max-w-xl text-tv-xs leading-relaxed text-white/50">
+                Your TV decides which screensaver to run, so this is set once in the TV&rsquo;s own
+                settings. Choose Ambient Canvas from the list that opens.
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className={cx(BUTTON_PRIMARY, 'shrink-0')}
+            onClick={() => {
+              onInteract();
+              openScreensaverSettings();
+            }}
+          >
+            Open TV Settings
+          </button>
+        </div>
+      )}
 
       <div className="grid gap-8 md:grid-cols-2">
         <div>

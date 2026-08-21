@@ -1,11 +1,110 @@
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:drawable="@color/ic_launcher_background" />
-    <item>
-        <inset
-            android:drawable="@drawable/ic_launcher_foreground"
-            android:insetLeft="90dp"
-            android:insetTop="30dp"
-            android:insetRight="90dp"
-            android:insetBottom="30dp" />
-    </item>
-</layer-list>
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  AND-14: the Android TV home-row banner.
+
+  This was a <layer-list> that inset the 108dp square launcher icon by 90dp on
+  the left and right. Inset values are applied to the *container* bounds, so on
+  a 320x180dp banner the square mark was squeezed into a 140x120dp box and
+  stretched non-uniformly to fill it — the icon appeared visibly distorted on
+  the home screen, with no app name anywhere on it.
+
+  It is now a real 320x180 banner: the framed-canvas mark at true aspect ratio,
+  a hairline rule, and the wordmark set in a serif to match the app's own
+  overlay typography. Letterforms are committed as outlines so the banner needs
+  no font at runtime and stays a text file, not a binary.
+-->
+<vector
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="320dp"
+    android:height="180dp"
+    android:viewportWidth="320"
+    android:viewportHeight="180">
+
+    <path android:pathData="M0,0h320v180h-320z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="0" android:startY="0"
+                android:endX="320" android:endY="180">
+                <item android:offset="0" android:color="#FF20261A" />
+                <item android:offset="0.5" android:color="#FF11140F" />
+                <item android:offset="1" android:color="#FF070905" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Warm light spilling from the picture, so the mark sits in the scene. -->
+    <path android:pathData="M0,0h200v180h-200z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="radial"
+                android:centerX="64" android:centerY="90"
+                android:gradientRadius="86">
+                <item android:offset="0" android:color="#2ED4CDA4" />
+                <item android:offset="0.6" android:color="#12D4CDA4" />
+                <item android:offset="1" android:color="#00D4CDA4" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- The launcher mark, at 1.5x and true aspect, centred on (64,90). -->
+    <group
+        android:scaleX="1.5" android:scaleY="1.5"
+        android:translateX="-17" android:translateY="9">
+        <path android:pathData="M32,37h44v34h-44z">
+            <aapt:attr name="android:fillColor">
+                <gradient
+                    android:type="linear"
+                    android:startX="54" android:startY="37"
+                    android:endX="54" android:endY="71">
+                    <item android:offset="0" android:color="#FFF4ECC8" />
+                    <item android:offset="0.5" android:color="#FFD8D1A2" />
+                    <item android:offset="1" android:color="#FFA7B187" />
+                </gradient>
+            </aapt:attr>
+        </path>
+        <path
+            android:fillColor="#30FFF3CE"
+            android:pathData="M64,46.5m-8.6,0a8.6,8.6 0,1 1,17.2 0a8.6,8.6 0,1 1,-17.2 0" />
+        <path
+            android:fillColor="#FFFFFBEC"
+            android:pathData="M64,46.5m-4.4,0a4.4,4.4 0,1 1,8.8 0a4.4,4.4 0,1 1,-8.8 0" />
+        <path
+            android:fillColor="#FF6B7A52"
+            android:pathData="M32,61.5C39,57.2 45.5,60.4 52,58.4C59.5,56.1 66,58.8 76,55.6L76,71L32,71Z" />
+        <path
+            android:fillColor="#FF3E4A31"
+            android:pathData="M32,66C40,62.5 48,65.5 57,63.8C65,62.3 70,64.5 76,63L76,71L32,71Z" />
+        <path
+            android:pathData="M32,37h44v34h-44z"
+            android:fillColor="#00000000"
+            android:strokeWidth="4.5"
+            android:strokeLineJoin="miter">
+            <aapt:attr name="android:strokeColor">
+                <gradient
+                    android:type="linear"
+                    android:startX="30" android:startY="35"
+                    android:endX="78" android:endY="73">
+                    <item android:offset="0" android:color="#FFE0D49B" />
+                    <item android:offset="0.55" android:color="#FFC1B87E" />
+                    <item android:offset="1" android:color="#FF837D4F" />
+                </gradient>
+            </aapt:attr>
+        </path>
+    </group>
+
+    <!-- Hairline rule separating mark from wordmark. -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M110,58L110,122"
+        android:strokeColor="#59D4CDA4"
+        android:strokeWidth="1" />
+
+    <path
+        android:fillColor="#FFD4CDA4"
+        android:pathData="M134.88 83.21V84.00H128.30V83.21L130.57 82.81L137.38 63.83H140.22L147.30 82.81L149.84 83.21V84.00H141.38V83.21L144.07 82.81L142.08 77.03H134.21L132.19 82.81ZM138.09 65.98 134.65 75.69H141.62ZM167.81 84.00H167.29L159.97 66.80V82.81L162.65 83.21V84.00H155.83V83.21L158.40 82.81V65.17L155.83 64.78V63.99H161.89L168.39 79.21L175.50 63.99H181.22V64.78L178.66 65.17V82.81L181.22 83.21V84.00H173.11V83.21L175.79 82.81V66.80ZM201.30 68.84Q201.30 67.01 200.15 66.17Q199.00 65.34 196.42 65.34H193.33V72.90H196.60Q199.02 72.90 200.16 71.95Q201.30 70.99 201.30 68.84ZM202.81 78.30Q202.81 76.20 201.41 75.22Q200.00 74.24 196.91 74.24H193.33V82.66Q195.39 82.75 197.72 82.75Q200.27 82.75 201.54 81.67Q202.81 80.58 202.81 78.30ZM187.89 84.00V83.21L190.45 82.81V65.17L187.89 64.78V63.99H197.03Q200.84 63.99 202.60 65.12Q204.36 66.25 204.36 68.69Q204.36 70.45 203.28 71.69Q202.20 72.93 200.24 73.35Q202.94 73.63 204.42 74.92Q205.90 76.21 205.90 78.24Q205.90 81.12 203.90 82.61Q201.91 84.09 198.09 84.09L191.71 84.00ZM218.81 82.81 221.38 83.21V84.00H213.38V83.21L215.95 82.81V65.17L213.38 64.78V63.99H221.38V64.78L218.81 65.17ZM228.22 83.21 230.79 82.81V65.17L228.22 64.78V63.99H243.23V68.78H242.24L241.77 65.55Q240.09 65.34 236.93 65.34H233.66V73.15H239.07L239.53 70.77H240.48V76.91H239.53L239.07 74.50H233.66V82.66H237.60Q241.45 82.66 242.65 82.42L243.50 78.72H244.48L244.20 84.00H228.22ZM268.12 65.17 265.44 64.78V63.99H272.25V64.78L269.69 65.17V84.00H268.24L255.90 66.01V82.81L258.59 83.21V84.00H251.77V83.21L254.34 82.81V65.17L251.77 64.78V63.99H257.83L268.12 78.81ZM282.54 84.00V83.21L285.72 82.81V65.28H284.96Q281.19 65.28 279.80 65.58L279.40 68.69H278.40V63.99H296.00V68.69H294.99L294.58 65.58Q294.14 65.47 292.63 65.39Q291.12 65.31 289.33 65.31H288.60V82.81L291.78 83.21V84.00Z" />
+    <path
+        android:fillColor="#FFD4CDA4"
+        android:pathData="M139.55 118.30Q134.68 118.30 131.97 115.65Q129.25 113.00 129.25 108.23Q129.25 103.07 131.86 100.42Q134.47 97.77 139.61 97.77Q142.72 97.77 146.31 98.53L146.39 102.90H145.41L144.96 100.31Q143.92 99.66 142.54 99.31Q141.16 98.96 139.73 98.96Q135.89 98.96 134.13 101.22Q132.37 103.47 132.37 108.20Q132.37 112.55 134.21 114.85Q136.06 117.15 139.58 117.15Q141.28 117.15 142.78 116.74Q144.29 116.33 145.17 115.64L145.72 112.66H146.69L146.60 117.36Q143.32 118.30 139.55 118.30ZM164.11 117.21V118.00H157.53V117.21L159.80 116.81L166.62 97.83H169.45L176.54 116.81L179.07 117.21V118.00H170.61V117.21L173.30 116.81L171.32 111.03H163.44L161.42 116.81ZM167.32 99.98 163.89 109.69H170.85ZM205.38 99.17 202.70 98.78V97.99H209.51V98.78L206.95 99.17V118.00H205.50L193.16 100.01V116.81L195.85 117.21V118.00H189.03V117.21L191.60 116.81V99.17L189.03 98.78V97.99H195.09L205.38 112.81ZM240.79 97.99V98.78L238.60 99.17L230.55 118.46H229.79L221.66 99.17L219.41 98.78V97.99H227.50V98.78L224.81 99.17L230.87 113.90L236.91 99.17L234.28 98.78V97.99ZM256.86 117.21V118.00H250.28V117.21L252.55 116.81L259.37 97.83H262.20L269.29 116.81L271.83 117.21V118.00H263.37V117.21L266.05 116.81L264.07 111.03H256.19L254.18 116.81ZM260.07 99.98 256.64 109.69H263.61ZM282.98 112.61H283.95L284.47 115.31Q285.02 116.02 286.37 116.55Q287.72 117.09 289.03 117.09Q291.12 117.09 292.29 116.02Q293.46 114.96 293.46 113.08Q293.46 112.00 293.01 111.30Q292.55 110.60 291.82 110.12Q291.08 109.63 290.14 109.29Q289.20 108.96 288.21 108.62Q287.21 108.27 286.27 107.86Q285.33 107.44 284.59 106.80Q283.86 106.15 283.40 105.21Q282.95 104.26 282.95 102.87Q282.95 100.49 284.74 99.13Q286.53 97.77 289.70 97.77Q292.12 97.77 294.96 98.41V102.57H293.99L293.46 100.13Q291.94 99.02 289.70 99.02Q287.71 99.02 286.58 99.84Q285.45 100.65 285.45 102.08Q285.45 103.05 285.91 103.69Q286.36 104.33 287.10 104.79Q287.84 105.24 288.79 105.57Q289.73 105.90 290.73 106.25Q291.72 106.60 292.67 107.04Q293.61 107.48 294.35 108.16Q295.09 108.84 295.54 109.82Q296.00 110.79 296.00 112.23Q296.00 115.12 294.22 116.71Q292.45 118.30 289.11 118.30Q287.50 118.30 285.87 118.01Q284.24 117.73 282.98 117.24Z" />
+</vector>

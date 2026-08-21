@@ -1,11 +1,14 @@
 package com.ambient.canvas.overlay;
 
 import android.Manifest;
+import android.content.ActivityNotFoundException;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.view.WindowManager;
 import android.webkit.GeolocationPermissions;
 import android.webkit.JavascriptInterface;
@@ -104,6 +107,29 @@ public class MainActivity extends BridgeActivity {
         pendingGeoOrigin = null;
     }
 
+    /*
+     * AND-16: a DreamService is inert until the user picks it in the system
+     * screensaver settings, and nothing in the app pointed them there. On a TV
+     * that screen is buried several levels deep and is named differently on
+     * almost every brand, so "go and find it" is not a usable instruction.
+     *
+     * Android TV vendors do not all ship the standard dream picker, hence the
+     * cascade: the exact screensaver screen if it exists, then display
+     * settings, then the settings root. resolveActivity() is deliberately not
+     * used — API 30 package visibility can hide the target from us even when
+     * launching it would have worked.
+     */
+    private boolean launchSettingsScreen(String action) {
+        try {
+            Intent intent = new Intent(action);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+            return true;
+        } catch (ActivityNotFoundException | SecurityException e) {
+            return false;
+        }
+    }
+
     /** The running build's own version, for the update check to compare against. */
     private PackageInfo selfPackageInfo() {
         try {
@@ -134,6 +160,14 @@ public class MainActivity extends BridgeActivity {
         @JavascriptInterface
         public boolean isNativeHost() {
             return true;
+        }
+
+        /** AND-16: takes the user straight to the system screensaver picker. */
+        @JavascriptInterface
+        public boolean openScreensaverSettings() {
+            return launchSettingsScreen(Settings.ACTION_DREAM_SETTINGS)
+                || launchSettingsScreen(Settings.ACTION_DISPLAY_SETTINGS)
+                || launchSettingsScreen(Settings.ACTION_SETTINGS);
         }
 
         /* ------------------------------------------------- AND-11: updates */

@@ -5,6 +5,7 @@ import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.service.dreams.DreamService;
 import android.view.ViewGroup;
+import android.view.ViewParent;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -51,13 +52,7 @@ public class AmbientDreamService extends DreamService {
             }
         });
 
-        addContentView(
-            dreamWebView,
-            new ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
-            )
-        );
+        setContentView(dreamWebView);
     }
 
     private void injectDreamState(WebView view) {
@@ -78,19 +73,27 @@ public class AmbientDreamService extends DreamService {
         super.onDreamingStarted();
         if (dreamWebView != null) {
             dreamWebView.onResume();
-            dreamWebView.resumeTimers();
             dreamWebView.loadUrl(DREAM_URL);
         }
     }
 
     @Override
     public void onDreamingStopped() {
-        // AND-06: timers were never paused, so JS intervals, CSS animations and
-        // the Framer Motion loop kept burning CPU after the dream ended.
+        /*
+         * AND-16: this used to call pauseTimers(). That API is documented as
+         * global — "pauses all layout, parsing and JavaScript timers for all
+         * WebViews" in the process, not just this one. The dream and the main
+         * activity share a process, so ending the screensaver froze the app's
+         * own WebView: the clock stopped, sensor polling stopped and the UI
+         * looked hung until the app was force-stopped.
+         *
+         * onPause() is per-WebView and is all that is needed here, because
+         * onDetachedFromWindow follows immediately and destroys the WebView
+         * outright — which stops every timer it owns and nothing else's.
+         */
         if (dreamWebView != null) {
             dreamWebView.stopLoading();
             dreamWebView.onPause();
-            dreamWebView.pauseTimers();
         }
         super.onDreamingStopped();
     }
@@ -98,9 +101,19 @@ public class AmbientDreamService extends DreamService {
     @Override
     public void onDetachedFromWindow() {
         if (dreamWebView != null) {
+            /*
+             * AND-16: removeAllViews() removes the WebView's *children*, not the
+             * WebView itself from its parent, so destroy() was being called on a
+             * still-attached WebView. Android logs "WebView.destroy() called
+             * while still attached" and the render surface can outlive the
+             * dream. Detach from the real parent first.
+             */
             dreamWebView.loadUrl("about:blank");
             dreamWebView.clearHistory();
-            dreamWebView.removeAllViews();
+            ViewParent parent = dreamWebView.getParent();
+            if (parent instanceof ViewGroup) {
+                ((ViewGroup) parent).removeView(dreamWebView);
+            }
             dreamWebView.destroy();
             dreamWebView = null;
         }

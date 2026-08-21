@@ -1,18 +1,26 @@
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  AND-14: the themed-icon silhouette. Android tints this by alpha alone, so it
+  must be a single flat white shape with no internal colour information. It
+  mirrors the foreground exactly: same frame, same ridge, same light source,
+  same safe-zone geometry.
+-->
+<vector
+    xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
     <path
         android:fillColor="#FFFFFFFF"
-        android:pathData="M14,78L40,42L54,60L68,52L94,78Z" />
+        android:pathData="M64,46.5m-4.4,0a4.4,4.4 0,1 1,8.8 0a4.4,4.4 0,1 1,-8.8 0" />
     <path
         android:fillColor="#FFFFFFFF"
-        android:pathData="M22,78L38,56L50,68L62,58L82,78Z" />
+        android:pathData="M34,63.4C40,60.2 48,63.2 57,61.5C65,60 70,62.2 74,60.8L74,69L34,69Z" />
     <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M23,80h62v6h-62z" />
-    <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M74,34m-11,0a11,11 0,1 1,22 0a11,11 0,1 1,-22 0" />
+        android:pathData="M32,37h44v34h-44z"
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="4"
+        android:strokeLineJoin="miter" />
 </vector>
