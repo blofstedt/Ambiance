@@ -2,9 +2,7 @@
  * @file The settings menu shell. Sections live in components/settings/. VISUAL.
  */
 
-
 import { useEffect, useRef } from 'react';
-
 
 import { DisplaySection } from './settings/DisplaySection';
 import { MediaSection } from './settings/MediaSection';
@@ -14,14 +12,10 @@ import { SensorPanel, type SensorPanelProps } from './SensorPanel';
 import type { Settings } from '../lib/settings';
 import type { UseAppUpdateResult } from '../hooks/useAppUpdate';
 
-
 export interface SettingsPanelProps {
   open: boolean;
   settings: Settings;
-  setSetting: <K extends keyof Settings>(
-    key: K,
-    value: Settings[K]
-  ) => void;
+  setSetting: <K extends keyof Settings>(key: K, value: Settings[K]) => void;
   luminance: number;
   warmth: number;
   onLuminanceChange: (value: number) => void;
@@ -35,7 +29,6 @@ export interface SettingsPanelProps {
   sensorPanel: SensorPanelProps;
   update: UseAppUpdateResult;
 }
-
 
 export function SettingsPanel(props: SettingsPanelProps) {
   const {
@@ -56,9 +49,7 @@ export function SettingsPanel(props: SettingsPanelProps) {
     update,
   } = props;
 
-
   const panelRef = useRef<HTMLDivElement>(null);
-
 
   /*
    * WEB-13: this panel was previously always mounted and merely hidden with
@@ -70,16 +61,12 @@ export function SettingsPanel(props: SettingsPanelProps) {
   useEffect(() => {
     if (!open) return;
     const raf = requestAnimationFrame(() => {
-      panelRef.current?.querySelector<HTMLElement>(
-        '[tabindex], button, input'
-      )?.focus();
+      panelRef.current?.querySelector<HTMLElement>('[tabindex], button, input')?.focus();
     });
     return () => cancelAnimationFrame(raf);
   }, [open]);
 
-
   if (!open) return null;
-
 
   return (
     <div
@@ -122,7 +109,6 @@ export function SettingsPanel(props: SettingsPanelProps) {
           />
         </div>
 
-
         <div className="col-start-2">
           <MediaSection
             settings={settings}
@@ -133,25 +119,17 @@ export function SettingsPanel(props: SettingsPanelProps) {
           />
         </div>
 
-
         <div className="col-start-1">
-          <PowerSection
-            settings={settings}
-            setSetting={setSetting}
-            onInteract={onInteract}
-          />
+          <PowerSection settings={settings} setSetting={setSetting} onInteract={onInteract} />
         </div>
-
 
         <div className="col-start-2">
           <SensorPanel {...sensorPanel} />
         </div>
 
-
         <div className="col-start-1">
           <UpdatesSection update={update} onInteract={onInteract} />
         </div>
-
 
         <div className="col-start-2 flex justify-end">
           <button
