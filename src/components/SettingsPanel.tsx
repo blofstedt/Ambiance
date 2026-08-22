@@ -71,7 +71,8 @@ export function SettingsPanel(props: SettingsPanelProps) {
 
   return (
     <div
-      className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/45 p-[3vw] backdrop-blur-[2px]"
+      className={"absolute inset-0 z-50 flex flex-col items-center justify-center
+        bg-black/45 p-[3vw] backdrop-blur-[2px]"}
       onKeyDown={(event) => {
         if (event.key === 'Escape' || event.key === 'Backspace') {
           const target = event.target as HTMLElement;
@@ -136,7 +137,10 @@ gs={settings} setSetting={setSetting} onInteract={onInteract} />
           <button
             type="button"
             onClick={onClose}
-            className="tv-focusable rounded-full border border-canvas-gold bg-canvas-gold/10 px-10 py-3 text-tv-xs font-bold tracking-[0.3em] text-canvas-gold uppercase transition-colors hover:bg-canvas-gold/20"
+            className={"tv-focusable rounded-full border border-canvas-gold
+              bg-canvas-gold/10 px-10 py-3 text-tv-xs font-bold
+              tracking-[0.3em] text-canvas-gold uppercase
+              transition-colors hover:bg-canvas-gold/20"}
           >
             Close
           </button>
