@@ -64,6 +64,7 @@ export function SettingsPanel(props: SettingsPanelProps) {
       panelRef.current?.querySelector<HTMLElement>('[tabindex], button, input')?.focus();
     });
   
+
   return () => cancelAnimationFrame(raf);
   }, [open]);
 
