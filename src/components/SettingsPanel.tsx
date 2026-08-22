@@ -67,6 +67,7 @@ export function SettingsPanel(props: SettingsPanelProps) {
 
 
 
+
   return () => cancelAnimationFrame(raf);
   }, [open]);
 
