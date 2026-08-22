@@ -186,6 +186,16 @@ export function assetUrl(release: GithubRelease, name: string): string | null {
   return asset ? asset.browser_download_url : null;
 }
 
+/**
+ * Whether a failed update-check fetch means "no release published yet" rather
+ * than a genuine outage. GitHub answers GET /releases/latest with 404 when a
+ * repository has never published a release — the app is not behind, there is
+ * simply nothing newer to offer.
+ */
+export function isMissingRelease(errorMessage: string): boolean {
+  return errorMessage === 'HTTP 404';
+}
+
 /** The single .apk asset in a release, or null if it has none (or several). */
 export function apkAsset(release: GithubRelease): ReleaseAsset | null {
   const apks = release.assets.filter((asset) => asset.name.toLowerCase().endsWith('.apk'));

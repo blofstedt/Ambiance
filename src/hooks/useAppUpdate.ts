@@ -18,7 +18,13 @@ import {
   startUpdateDownload,
   type UpdateStatus,
 } from '../lib/native';
-import { buildUpdate, isUpgrade, parseRelease, type AvailableUpdate } from '../lib/updates';
+import {
+  buildUpdate,
+  isMissingRelease,
+  isUpgrade,
+  parseRelease,
+  type AvailableUpdate,
+} from '../lib/updates';
 import { load, save } from '../lib/storage';
 
 /**
@@ -147,13 +153,25 @@ export function useAppUpdate(): UseAppUpdateResult {
           setCheckState('current');
         }
       } catch (error) {
-        setUpdate(null);
-        setCheckState('error');
-        setErrorMessage(
-          error instanceof Error && error.name === 'AbortError'
-            ? 'The update server did not respond.'
-            : 'Could not reach the update server.',
-        );
+        if (isMissingRelease(error instanceof Error ? error.message : '')) {
+          /*
+           * No release has been published yet — GitHub answers 404. The app is
+           * on the newest build there is; that is "up to date", not an outage.
+           */
+          const now = Date.now();
+          setLastCheckedAt(now);
+          save('lastUpdateCheck', now);
+          setUpdate(null);
+          setCheckState('current');
+        } else {
+          setUpdate(null);
+          setCheckState('error');
+          setErrorMessage(
+            error instanceof Error && error.name === 'AbortError'
+              ? 'The update server did not respond.'
+              : 'Could not reach the update server.',
+          );
+        }
       } finally {
         inFlight.current = false;
       }
