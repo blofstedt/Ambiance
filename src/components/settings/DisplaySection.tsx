@@ -118,7 +118,9 @@ export function DisplaySection(props: DisplaySectionProps) {
             className={cx(TOGGLE, 'flex-1', settings.showClock ? TOGGLE_ON : TOGGLE_OFF)}
           >
             <Clock className="h-6 w-6" aria-hidden="true" />
-            <span className="text-tv-xs font-bold tracking-widest uppercase">Clock</span>
+            <span className="text-tv-xs font-bold tracking-widest uppercase">
+              Clock
+            </span>
           </button>
 
           <button
@@ -132,7 +134,9 @@ export function DisplaySection(props: DisplaySectionProps) {
             className={cx(TOGGLE, 'flex-1', settings.showWeather ? TOGGLE_ON : TOGGLE_OFF)}
           >
             <Cloud className="h-6 w-6" aria-hidden="true" />
-            <span className="text-tv-xs font-bold tracking-widest uppercase">Weather</span>
+            <span className="text-tv-xs font-bold tracking-widest uppercase">
+              Weather
+            </span>
           </button>
         </div>
       </div>
@@ -163,7 +167,6 @@ export function DisplaySection(props: DisplaySectionProps) {
           ))}
         </div>
 
-        {/* WEB-25: temperature was hardcoded to Celsius with no way to change it. */}
         <span className="flex items-center gap-2 text-tv-xs font-bold tracking-[0.25em] text-white/55 uppercase">
           Units
         </span>
