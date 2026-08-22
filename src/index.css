@@ -1,4 +1,4 @@
-/*
+/**
  * WEB-16: fonts were loaded from fonts.googleapis.com at runtime. On a TV with
  * no WAN link the @import silently failed and every overlay fell back to the
  * platform default, which on Android TV is a condensed sans that looks nothing
@@ -10,9 +10,10 @@
 @import 'tailwindcss';
 
 @theme {
-  --font-sans:
-    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, Consolas, monospace;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, Consolas,
+    monospace;
   --font-serif: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
   --font-script: 'Segoe Script', 'Brush Script MT', cursive;
 
@@ -157,7 +158,7 @@ body {
     grid-template-columns: 1fr !important;
     gap: 1rem !important;
   }
-  
+
   /* Force all internal grids to single column on mobile */
   [role='dialog'] .grid {
     grid-template-columns: 1fr !important;
@@ -171,7 +172,7 @@ body {
     padding: 1rem;
     max-height: 95vh;
   }
-  
+
   [role='dialog'] > div {
     gap: 0.75rem !important;
   }
@@ -183,11 +184,11 @@ body {
     max-height: 95vh;
     padding: 0.75rem;
   }
-  
+
   [role='dialog'] > div {
     gap: 0.75rem;
   }
-  
+
   /* Ensure all grids stack vertically on short screens */
   [role='dialog'] .grid {
     grid-template-columns: 1fr !important;
@@ -201,20 +202,20 @@ body {
     padding: 0.5rem;
     max-height: 98vh;
   }
-  
+
   [role='dialog'] > div {
     gap: 0.5rem;
   }
-  
+
   [role='dialog'] section {
     margin-bottom: 0.25rem;
   }
-  
+
   /* Reduce text sizes slightly for extreme cases */
   [role='dialog'] .text-tv-xs {
     font-size: clamp(0.65rem, 0.6vw, 0.9rem);
   }
-  
+
   [role='dialog'] .text-tv-sm {
     font-size: clamp(0.75rem, 0.7vw, 1rem);
   }
