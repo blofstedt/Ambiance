@@ -53,7 +53,7 @@ export function SettingsPanel(props: SettingsPanelProps) {
 
   /*
    * WEB-13: this panel was previously always mounted and merely hidden with
-   * opacity-0 pointer-events-none. pointer-events does not affect keyboard or
+   * `opacity-0 pointer-events-none`. pointer-events does not affect keyboard or
    * D-pad focus, so arrowing from the artwork screen walked straight into an
    * invisible menu and the TV appeared frozen. Conditional rendering (below)
    * removes the problem at the source.
