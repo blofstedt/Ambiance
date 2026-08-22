@@ -81,41 +81,54 @@ export function SettingsPanel(props: SettingsPanelProps) {
         }
       }}
     >
-      {/* WEB-19: bounded and scrollable; the old panel overflowed unreachably. */}
+      {/* WEB-19: bounded and scrollable; the old panel overflowed unreachably.
+          Two columns now, so the whole menu fits one screen at TV sizes.
+          No tv-scroll here: invisible hover tooltips (absolute-positioned)
+          would inflate scrollHeight and pop a scrollbar for no reason. */}
       <div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label="Ambient Canvas settings"
-        className="tv-scroll flex max-h-[88vh] w-[min(1400px,88vw)] flex-col gap-8 rounded-3xl border border-white/10 bg-canvas-surface/70 p-[2.5vw] shadow-[0_24px_80px_rgba(0,0,0,0.6)]"
+        className="grid max-h-[88vh] w-[min(1400px,88vw)] grid-cols-2 items-start gap-8 rounded-3xl border border-white/10 bg-canvas-surface/70 p-[2.5vw] shadow-[0_24px_80px_rgba(0,0,0,0.6)]"
       >
-        <DisplaySection
-          settings={settings}
-          setSetting={setSetting}
-          luminance={luminance}
-          warmth={warmth}
-          onLuminanceChange={onLuminanceChange}
-          onWarmthChange={onWarmthChange}
-          onCommitProfile={onCommitProfile}
-          onToggleWeather={onToggleWeather}
-          onInteract={onInteract}
-        />
+        <div className="col-start-1">
+          <DisplaySection
+            settings={settings}
+            setSetting={setSetting}
+            luminance={luminance}
+            warmth={warmth}
+            onLuminanceChange={onLuminanceChange}
+            onWarmthChange={onWarmthChange}
+            onCommitProfile={onCommitProfile}
+            onToggleWeather={onToggleWeather}
+            onInteract={onInteract}
+          />
+        </div>
 
-        <MediaSection
-          settings={settings}
-          setSetting={setSetting}
-          localCount={localCount}
-          onPickLocalFolder={onPickLocalFolder}
-          onInteract={onInteract}
-        />
+        <div className="col-start-2">
+          <MediaSection
+            settings={settings}
+            setSetting={setSetting}
+            localCount={localCount}
+            onPickLocalFolder={onPickLocalFolder}
+            onInteract={onInteract}
+          />
+        </div>
 
-        <PowerSection settings={settings} setSetting={setSetting} onInteract={onInteract} />
+        <div className="col-start-1">
+          <PowerSection settings={settings} setSetting={setSetting} onInteract={onInteract} />
+        </div>
 
-        <SensorPanel {...sensorPanel} />
+        <div className="col-start-2">
+          <SensorPanel {...sensorPanel} />
+        </div>
 
-        <UpdatesSection update={update} onInteract={onInteract} />
+        <div className="col-start-1">
+          <UpdatesSection update={update} onInteract={onInteract} />
+        </div>
 
-        <div className="flex justify-end">
+        <div className="col-start-2 flex justify-end">
           <button
             type="button"
             onClick={onClose}
