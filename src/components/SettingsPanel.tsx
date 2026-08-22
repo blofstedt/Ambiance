@@ -121,8 +121,7 @@ export function SettingsPanel(props: SettingsPanelProps) {
         </div>
 
         <div className="col-start-1">
-          <PowerSection settin
-gs={settings} setSetting={setSetting} onInteract={onInteract} />
+          <PowerSection settings={settings} setSetting={setSetting} onInteract={onInteract} />
         </div>
 
         <div className="col-start-2">
