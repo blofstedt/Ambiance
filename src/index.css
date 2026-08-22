@@ -149,3 +149,73 @@ body {
     max-height: 18vh;
   }
 }
+
+/* Responsive settings panel - ensure all content fits on one screen */
+/* Mobile screens: force single column layout */
+@media (max-width: 768px) {
+  [role='dialog'] > div {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+  
+  /* Force all internal grids to single column on mobile */
+  [role='dialog'] .grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem !important;
+  }
+}
+
+/* Very small screens: ultra-compact layout */
+@media (max-width: 480px) {
+  [role='dialog'] {
+    padding: 1rem;
+    max-height: 95vh;
+  }
+  
+  [role='dialog'] > div {
+    gap: 0.75rem !important;
+  }
+}
+
+/* Short screens (portrait mobile, small TVs): compact everything */
+@media (max-height: 700px) {
+  [role='dialog'] {
+    max-height: 95vh;
+    padding: 0.75rem;
+  }
+  
+  [role='dialog'] > div {
+    gap: 0.75rem;
+  }
+  
+  /* Ensure all grids stack vertically on short screens */
+  [role='dialog'] .grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.5rem !important;
+  }
+}
+
+/* Very short screens: extreme compaction */
+@media (max-height: 500px) {
+  [role='dialog'] {
+    padding: 0.5rem;
+    max-height: 98vh;
+  }
+  
+  [role='dialog'] > div {
+    gap: 0.5rem;
+  }
+  
+  [role='dialog'] section {
+    margin-bottom: 0.25rem;
+  }
+  
+  /* Reduce text sizes slightly for extreme cases */
+  [role='dialog'] .text-tv-xs {
+    font-size: clamp(0.65rem, 0.6vw, 0.9rem);
+  }
+  
+  [role='dialog'] .text-tv-sm {
+    font-size: clamp(0.75rem, 0.7vw, 1rem);
+  }
+}
