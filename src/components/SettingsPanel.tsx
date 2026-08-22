@@ -70,8 +70,7 @@ export function SettingsPanel(props: SettingsPanelProps) {
 
   return (
     <div
-      className={`absolute inset-0 z-50 flex flex-col items-center
-        justify-center bg-black/45 p-[3vw] backdrop-blur-[2px]`}
+      className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/45 p-[3vw] backdrop-blur-[2px]"
       onKeyDown={(event) => {
         if (event.key === 'Escape' || event.key === 'Backspace') {
           const target = event.target as HTMLElement;
@@ -91,9 +90,7 @@ export function SettingsPanel(props: SettingsPanelProps) {
         role="dialog"
         aria-modal="true"
         aria-label="Ambient Canvas settings"
-        className={`grid w-[min(1400px,88vw)] grid-cols-2 items-start
-          gap-8 rounded-3xl border border-white/10 bg-canvas-surface/70
-          p-[2.5vw] shadow-[0_24px_80px_rgba(0,0,0,0.6)]`}
+        className="grid w-[min(1400px,88vw)] grid-cols-2 items-start gap-8 rounded-3xl border border-white/10 bg-canvas-surface/70 p-[2.5vw] shadow-[0_24px_80px_rgba(0,0,0,0.6)]"
       >
         <div className="col-start-1">
           <DisplaySection
@@ -135,10 +132,7 @@ export function SettingsPanel(props: SettingsPanelProps) {
           <button
             type="button"
             onClick={onClose}
-            className={`tv-focusable rounded-full border border-canvas-gold
-              bg-canvas-gold/10 px-10 py-3 text-tv-xs font-bold tracking-[0.3em]
-              text-canvas-gold uppercase transition-colors
-              hover:bg-canvas-gold/20`}
+            className="tv-focusable rounded-full border border-canvas-gold bg-canvas-gold/10 px-10 py-3 text-tv-xs font-bold tracking-[0.3em] text-canvas-gold uppercase transition-colors hover:bg-canvas-gold/20"
           >
             Close
           </button>
