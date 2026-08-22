@@ -53,7 +53,7 @@ export function SettingsPanel(props: SettingsPanelProps) {
 
   /*
    * WEB-13: this panel was previously always mounted and merely hidden with
-   * `opacity-0 pointer-events-none`. pointer-events does not affect keyboard or
+   * opacity-0 pointer-events-none. pointer-events does not affect keyboard or
    * D-pad focus, so arrowing from the artwork screen walked straight into an
    * invisible menu and the TV appeared frozen. Conditional rendering (below)
    * removes the problem at the source.
@@ -70,8 +70,7 @@ export function SettingsPanel(props: SettingsPanelProps) {
 
   return (
     <div
-      className="absolute inset-0 z-50 flex flex-col items-center
-        justify-center bg-black/45 p-[3vw] backdrop-blur-[2px]"
+      className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/45 p-[3vw] backdrop-blur-[2px]"
       onKeyDown={(event) => {
         if (event.key === 'Escape' || event.key === 'Backspace') {
           const target = event.target as HTMLElement;
@@ -82,19 +81,12 @@ export function SettingsPanel(props: SettingsPanelProps) {
         }
       }}
     >
-      {/* Responsive grid layout that adapts to screen size
-          - Single column on mobile, 2 columns on medium+ screens
-          - Max height constrained to fit within viewport
-          - Tighter spacing on smaller screens */}
       <div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label="Ambient Canvas settings"
-        className="w-[min(1400px,92vw)] max-h-[90vh] grid grid-cols-1 md:grid-cols-2
-          items-start gap-4 md:gap-8 rounded-3xl border border-white/10
-          bg-canvas-surface/70 p-[2vw] md:p-[2.5vw] shadow-[0_24px_80px_rgba(0,0,0,0.6)]
-          overflow-y-auto tv-scroll"
+        className="w-[min(1400px,92vw)] max-h-[90vh] grid grid-cols-1 md:grid-cols-2 items-start gap-4 md:gap-8 rounded-3xl border border-white/10 bg-canvas-surface/70 p-[2vw] md:p-[2.5vw] shadow-[0_24px_80px_rgba(0,0,0,0.6)] overflow-y-auto tv-scroll"
       >
         <div className="min-w-0">
           <DisplaySection
@@ -136,10 +128,7 @@ export function SettingsPanel(props: SettingsPanelProps) {
           <button
             type="button"
             onClick={onClose}
-            className="tv-focusable rounded-full border border-canvas-gold
-              bg-canvas-gold/10 px-8 md:px-10 py-2 md:py-3 text-tv-xs font-bold
-              tracking-[0.3em] text-canvas-gold uppercase
-              transition-colors hover:bg-canvas-gold/20"
+            className="tv-focusable rounded-full border border-canvas-gold bg-canvas-gold/10 px-8 md:px-10 py-2 md:py-3 text-tv-xs font-bold tracking-[0.3em] text-canvas-gold uppercase transition-colors hover:bg-canvas-gold/20"
           >
             Close
           </button>
