@@ -74,11 +74,11 @@ export function MediaSection(props: MediaSectionProps) {
           />
           <span className="text-left text-tv-sm font-bold tracking-widest text-white/70 uppercase">
             Local Albums
-            {localCount > 0 ? (
+            {localCount > 0 && (
               <span className="block font-mono text-tv-xs tracking-normal text-canvas-sage normal-case">
                 {localCount} image{localCount === 1 ? '' : 's'} loaded
               </span>
-            ) : null}
+            )}
           </span>
         </button>
 
