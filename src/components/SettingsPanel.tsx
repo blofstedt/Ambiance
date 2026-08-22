@@ -63,7 +63,8 @@ export function SettingsPanel(props: SettingsPanelProps) {
     const raf = requestAnimationFrame(() => {
       panelRef.current?.querySelector<HTMLElement>('[tabindex], button, input')?.focus();
     });
-    return () => cancelAnimationFrame(raf);
+  
+  return () => cancelAnimationFrame(raf);
   }, [open]);
 
   if (!open) return null;
@@ -90,7 +91,9 @@ export function SettingsPanel(props: SettingsPanelProps) {
         role="dialog"
         aria-modal="true"
         aria-label="Ambient Canvas settings"
-        className="grid w-[min(1400px,88vw)] grid-cols-2 items-start gap-8 rounded-3xl border border-white/10 bg-canvas-surface/70 p-[2.5vw] shadow-[0_24px_80px_rgba(0,0,0,0.6)]"
+        className={`grid w-[min(1400px,88vw)] grid-cols-2 items-start gap-8
+          rounded-3xl border border-white/10 bg-canvas-surface/70
+          p-[2.5vw] shadow-[0_24px_80px_rgba(0,0,0,0.6)]`}
       >
         <div className="col-start-1">
           <DisplaySection
@@ -117,7 +120,8 @@ export function SettingsPanel(props: SettingsPanelProps) {
         </div>
 
         <div className="col-start-1">
-          <PowerSection settings={settings} setSetting={setSetting} onInteract={onInteract} />
+          <PowerSection settin
+gs={settings} setSetting={setSetting} onInteract={onInteract} />
         </div>
 
         <div className="col-start-2">
