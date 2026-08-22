@@ -34,7 +34,7 @@ export function MediaSection(props: MediaSectionProps) {
         <SettingTooltip text="Where images come from and how often they change." />
       </h3>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-4 md:gap-6 lg:grid-cols-2 xl:grid-cols-3">
         <button
           type="button"
           aria-pressed={settings.imageSource === 'curated'}
