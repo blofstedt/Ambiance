@@ -113,7 +113,11 @@ export function SettingsPanel(props: SettingsPanelProps) {
         </div>
 
         <div className="min-w-0">
-          <PowerSection settings={settings} setSetting={setSetting} onInteract={onInteract} />
+          <PowerSection
+            settings={settings}
+            setSetting={setSetting}
+            onInteract={onInteract}
+          />
         </div>
 
         <div className="min-w-0">
