@@ -2,7 +2,9 @@
  * @file The settings menu shell. Sections live in components/settings/. VISUAL.
  */
 
+
 import { useEffect, useRef } from 'react';
+
 
 import { DisplaySection } from './settings/DisplaySection';
 import { MediaSection } from './settings/MediaSection';
@@ -12,10 +14,14 @@ import { SensorPanel, type SensorPanelProps } from './SensorPanel';
 import type { Settings } from '../lib/settings';
 import type { UseAppUpdateResult } from '../hooks/useAppUpdate';
 
+
 export interface SettingsPanelProps {
   open: boolean;
   settings: Settings;
-  setSetting: <K extends keyof Settings>(key: K, value: Settings[K]) => void;
+  setSetting: <K extends keyof Settings>(
+    key: K,
+    value: Settings[K]
+  ) => void;
   luminance: number;
   warmth: number;
   onLuminanceChange: (value: number) => void;
@@ -29,6 +35,7 @@ export interface SettingsPanelProps {
   sensorPanel: SensorPanelProps;
   update: UseAppUpdateResult;
 }
+
 
 export function SettingsPanel(props: SettingsPanelProps) {
   const {
@@ -49,7 +56,9 @@ export function SettingsPanel(props: SettingsPanelProps) {
     update,
   } = props;
 
+
   const panelRef = useRef<HTMLDivElement>(null);
+
 
   /*
    * WEB-13: this panel was previously always mounted and merely hidden with
@@ -61,16 +70,21 @@ export function SettingsPanel(props: SettingsPanelProps) {
   useEffect(() => {
     if (!open) return;
     const raf = requestAnimationFrame(() => {
-      panelRef.current?.querySelector<HTMLElement>('[tabindex], button, input')?.focus();
+      panelRef.current?.querySelector<HTMLElement>(
+        '[tabindex], button, input'
+      )?.focus();
     });
     return () => cancelAnimationFrame(raf);
   }, [open]);
 
+
   if (!open) return null;
+
 
   return (
     <div
-      className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/45 p-[3vw] backdrop-blur-[2px]"
+      className="absolute inset-0 z-50 flex flex-col items-center
+        justify-center bg-black/45 p-[3vw] backdrop-blur-[2px]"
       onKeyDown={(event) => {
         if (event.key === 'Escape' || event.key === 'Backspace') {
           const target = event.target as HTMLElement;
@@ -90,7 +104,9 @@ export function SettingsPanel(props: SettingsPanelProps) {
         role="dialog"
         aria-modal="true"
         aria-label="Ambient Canvas settings"
-        className="grid w-[min(1400px,88vw)] grid-cols-2 items-start gap-8 rounded-3xl border border-white/10 bg-canvas-surface/70 p-[2.5vw] shadow-[0_24px_80px_rgba(0,0,0,0.6)]"
+        className="grid w-[min(1400px,88vw)] grid-cols-2 items-start
+          gap-8 rounded-3xl border border-white/10 bg-canvas-surface/70
+          p-[2.5vw] shadow-[0_24px_80px_rgba(0,0,0,0.6)]"
       >
         <div className="col-start-1">
           <DisplaySection
@@ -106,6 +122,7 @@ export function SettingsPanel(props: SettingsPanelProps) {
           />
         </div>
 
+
         <div className="col-start-2">
           <MediaSection
             settings={settings}
@@ -116,23 +133,34 @@ export function SettingsPanel(props: SettingsPanelProps) {
           />
         </div>
 
+
         <div className="col-start-1">
-          <PowerSection settings={settings} setSetting={setSetting} onInteract={onInteract} />
+          <PowerSection
+            settings={settings}
+            setSetting={setSetting}
+            onInteract={onInteract}
+          />
         </div>
+
 
         <div className="col-start-2">
           <SensorPanel {...sensorPanel} />
         </div>
 
+
         <div className="col-start-1">
           <UpdatesSection update={update} onInteract={onInteract} />
         </div>
+
 
         <div className="col-start-2 flex justify-end">
           <button
             type="button"
             onClick={onClose}
-            className="tv-focusable rounded-full border border-canvas-gold bg-canvas-gold/10 px-10 py-3 text-tv-xs font-bold tracking-[0.3em] text-canvas-gold uppercase transition-colors hover:bg-canvas-gold/20"
+            className="tv-focusable rounded-full border border-canvas-gold
+              bg-canvas-gold/10 px-10 py-3 text-tv-xs font-bold
+              tracking-[0.3em] text-canvas-gold uppercase
+              transition-colors hover:bg-canvas-gold/20"
           >
             Close
           </button>
