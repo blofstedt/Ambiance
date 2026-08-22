@@ -66,6 +66,7 @@ export function SettingsPanel(props: SettingsPanelProps) {
   
 
 
+
   return () => cancelAnimationFrame(raf);
   }, [open]);
 
@@ -122,8 +123,7 @@ export function SettingsPanel(props: SettingsPanelProps) {
           />
         </div>
 
-        <div className="col-start-
-1">
+        <div className="col-start-1">
           <PowerSection settings={settings} setSetting={setSetting} onInteract={onInteract} />
         </div>
 
