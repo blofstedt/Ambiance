@@ -83,7 +83,9 @@ export function PowerSection({ settings, setSetting, onInteract }: PowerSectionP
           )}
         >
           <EyeOff className="h-6 w-6" aria-hidden="true" />
-          <span className="text-tv-xs font-bold tracking-widest uppercase">Black Mode</span>
+          <span className="text-tv-xs font-bold tracking-widest uppercase">
+            Black Mode
+          </span>
           <span className="text-center text-tv-xs normal-case opacity-60">
             Recommended for OLED and Mini-LED panels
           </span>
@@ -99,14 +101,18 @@ export function PowerSection({ settings, setSetting, onInteract }: PowerSectionP
           className={cx(TOGGLE, settings.keepScreenAwake ? TOGGLE_ON : TOGGLE_OFF)}
         >
           <Sun className="h-6 w-6" aria-hidden="true" />
-          <span className="text-tv-xs font-bold tracking-widest uppercase">Keep Awake</span>
+          <span className="text-tv-xs font-bold tracking-widest uppercase">
+            Keep Awake
+          </span>
           <span className="text-center text-tv-xs normal-case opacity-60">
             Stops the TV sleeping on its own timer
           </span>
         </button>
       </div>
 
-      {canOpenScreensaverSettings() ? <ScreensaverCard onInteract={onInteract} /> : null}
+      {canOpenScreensaverSettings() ? (
+        <ScreensaverCard onInteract={onInteract} />
+      ) : null}
 
       <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
         <div>
