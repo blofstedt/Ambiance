@@ -82,20 +82,21 @@ export function SettingsPanel(props: SettingsPanelProps) {
         }
       }}
     >
-      {/* WEB-19: Two columns so the whole menu fits one screen at TV sizes
-          Two columns now, so the whole menu fits one screen at TV sizes.
-          No tv-scroll here: invisible hover tooltips (absolute-positioned)
-          would inflate scrollHeight and pop a scrollbar for no reason. */}
+      {/* Responsive grid layout that adapts to screen size
+          - Single column on mobile, 2 columns on medium+ screens
+          - Max height constrained to fit within viewport
+          - Tighter spacing on smaller screens */}
       <div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label="Ambient Canvas settings"
-        className="grid w-[min(1400px,88vw)] grid-cols-2 items-start
-          gap-8 rounded-3xl border border-white/10 bg-canvas-surface/70
-          p-[2.5vw] shadow-[0_24px_80px_rgba(0,0,0,0.6)]"
+        className="w-[min(1400px,92vw)] max-h-[90vh] grid grid-cols-1 md:grid-cols-2
+          items-start gap-4 md:gap-8 rounded-3xl border border-white/10
+          bg-canvas-surface/70 p-[2vw] md:p-[2.5vw] shadow-[0_24px_80px_rgba(0,0,0,0.6)]
+          overflow-y-auto tv-scroll"
       >
-        <div className="col-start-1">
+        <div className="min-w-0">
           <DisplaySection
             settings={settings}
             setSetting={setSetting}
@@ -109,7 +110,7 @@ export function SettingsPanel(props: SettingsPanelProps) {
           />
         </div>
 
-        <div className="col-start-2">
+        <div className="min-w-0">
           <MediaSection
             settings={settings}
             setSetting={setSetting}
@@ -119,24 +120,24 @@ export function SettingsPanel(props: SettingsPanelProps) {
           />
         </div>
 
-        <div className="col-start-1">
+        <div className="min-w-0">
           <PowerSection settings={settings} setSetting={setSetting} onInteract={onInteract} />
         </div>
 
-        <div className="col-start-2">
+        <div className="min-w-0">
           <SensorPanel {...sensorPanel} />
         </div>
 
-        <div className="col-start-1">
+        <div className="min-w-0">
           <UpdatesSection update={update} onInteract={onInteract} />
         </div>
 
-        <div className="col-start-2 flex justify-end">
+        <div className="col-span-1 md:col-span-2 flex justify-end">
           <button
             type="button"
             onClick={onClose}
             className="tv-focusable rounded-full border border-canvas-gold
-              bg-canvas-gold/10 px-10 py-3 text-tv-xs font-bold
+              bg-canvas-gold/10 px-8 md:px-10 py-2 md:py-3 text-tv-xs font-bold
               tracking-[0.3em] text-canvas-gold uppercase
               transition-colors hover:bg-canvas-gold/20"
           >
