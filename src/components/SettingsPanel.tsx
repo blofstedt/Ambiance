@@ -81,7 +81,7 @@ export function SettingsPanel(props: SettingsPanelProps) {
         }
       }}
     >
-      {/* WEB-19: bounded and scrollable; the old panel overflowed unreachably.
+      {/* WEB-19: Two columns so the whole menu fits one screen at TV sizes with no scrolling.
           Two columns now, so the whole menu fits one screen at TV sizes.
           No tv-scroll here: invisible hover tooltips (absolute-positioned)
           would inflate scrollHeight and pop a scrollbar for no reason. */}
