@@ -54,7 +54,7 @@ export function DisplaySection(props: DisplaySectionProps) {
         <SettingTooltip text="Picture tuning and overlay controls for the artwork screen." />
       </h3>
 
-      <div className="grid gap-8 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 md:gap-6 lg:grid-cols-2 xl:grid-cols-4">
         <TvSlider
           label="Brightness"
           tooltip="Artwork brightness after ambient adjustments are applied."
