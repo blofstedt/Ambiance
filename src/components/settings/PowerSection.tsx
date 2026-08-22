@@ -37,7 +37,7 @@ export function PowerSection({ settings, setSetting, onInteract }: PowerSectionP
         <SettingTooltip text="Motion, blackout, and panel protection behaviour." />
       </h3>
 
-      <div className="grid gap-8 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 md:gap-6 lg:grid-cols-2 xl:grid-cols-4">
         <TvSlider
           label="Sleep Timer"
           tooltip="Minutes without motion before the screen blacks out."
@@ -108,7 +108,7 @@ export function PowerSection({ settings, setSetting, onInteract }: PowerSectionP
 
       {canOpenScreensaverSettings() ? <ScreensaverCard onInteract={onInteract} /> : null}
 
-      <div className="grid gap-8 md:grid-cols-2">
+      <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
         <div>
           <div className="mb-2 flex items-center gap-2 text-tv-xs font-bold tracking-widest text-white/40 uppercase">
             Motion Sensitivity
