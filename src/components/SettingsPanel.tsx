@@ -90,7 +90,7 @@ export function SettingsPanel(props: SettingsPanelProps) {
         role="dialog"
         aria-modal="true"
         aria-label="Ambient Canvas settings"
-        className="grid w-[min(1400px,88vw)] grid-cols-2 items-start gap-8 rounded-3xl border border-white/10 bg-canvas-surface/70 p-[2.5vw] shadow-[0_24px_80px_rgba(0,0,0,0.6)]"
+        className="grid max-h-[88vh] w-[min(1400px,88vw)] grid-cols-2 items-start gap-8 rounded-3xl border border-white/10 bg-canvas-surface/70 p-[2.5vw] shadow-[0_24px_80px_rgba(0,0,0,0.6)]"
       >
         <div className="col-start-1">
           <DisplaySection
