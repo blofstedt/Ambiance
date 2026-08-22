@@ -84,6 +84,13 @@ jobs:
           distribution: temurin
           java-version: 21
 
+      # ubuntu-latest now ships Gradle >= 9.6, which AGP 8.13 cannot run under.
+      # Pin the CLI used to regenerate the wrapper JAR (same as ci.yml).
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.14.3
+
       - uses: android-actions/setup-android@v3
 
       - run: npm ci

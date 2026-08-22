@@ -13,6 +13,7 @@ import {
   buildUpdate,
   compareVersionNames,
   formatBytes,
+  isMissingRelease,
   isSha256,
   isTrustedUpdateUrl,
   isUpgrade,
@@ -211,6 +212,18 @@ describe('trimNotes', () => {
     expect(trimNotes('<!-- hidden -->Visible')).toBe('Visible');
     expect(trimNotes('x'.repeat(700))).toHaveLength(601);
     expect(trimNotes(null)).toBe('');
+  });
+});
+
+describe('isMissingRelease', () => {
+  it('treats GitHub 404 as "no release yet", not an outage', () => {
+    expect(isMissingRelease('HTTP 404')).toBe(true);
+  });
+
+  it('does not classify other failures as a missing release', () => {
+    expect(isMissingRelease('HTTP 500')).toBe(false);
+    expect(isMissingRelease('Failed to fetch')).toBe(false);
+    expect(isMissingRelease('')).toBe(false);
   });
 });
 
