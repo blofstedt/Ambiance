@@ -267,7 +267,7 @@ export function SensorPanel(props: SensorPanelProps) {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="tv-scroll max-h-[38vh] rounded-xl bg-white/5 p-5">
+        <div className="tv-scroll max-h-[30vh] rounded-xl bg-white/5 p-5">
           {entries.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
               <p className="text-tv-sm font-bold text-canvas-gold uppercase">No sensors found</p>
