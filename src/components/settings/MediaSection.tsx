@@ -28,13 +28,14 @@ export function MediaSection(props: MediaSectionProps) {
     );
 
   return (
-    <section className="space-y-4">
+    <section className="flex h-full min-h-0 flex-col gap-8">
       <h3 className={SECTION_HEADING}>
         Media &amp; Rotation
         <SettingTooltip text="Where images come from and how often they change." />
       </h3>
 
-      <div className="grid gap-4 md:gap-6 lg:grid-cols-2 xl:grid-cols-3">
+      {/* Fixed columns, no breakpoints — see the note in DisplaySection. */}
+      <div className="grid grid-cols-3 gap-8">
         <button
           type="button"
           aria-pressed={settings.imageSource === 'curated'}

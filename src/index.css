@@ -27,22 +27,61 @@
    * WEB-22 / WEB-24: the original UI sized everything in raw `vw` units, down
    * to 0.55vw. On a 1920px-wide panel that is 10.5px of uppercase text with
    * 0.12em letter-spacing, viewed from three metres away. It was effectively
-   * unreadable, and on a narrow window it collapsed to nothing.
+   * unreadable, and on a narrow window it collapsed to nothing. clamp() fixed
+   * the legibility floor but left the scale driven by *width* alone.
    *
-   * clamp() keeps the vw-driven proportions on a TV while enforcing a legible
-   * floor everywhere else.
+   * WEB-25: width-only scaling is why the settings menu did not fit. On a short
+   * or sideways screen the text stayed at its rem floor while the viewport ran
+   * out of height, and every padding/gap/icon size never moved at all. The type
+   * scale is now plain rem and rides the single `--tv-scale` lever below, which
+   * accounts for both axes. These values are what the old clamps resolved to at
+   * 1920x1080, so a 1080p TV renders exactly as it did before.
    */
-  --text-tv-xs: clamp(0.75rem, 0.72vw, 1.1rem);
-  --text-tv-sm: clamp(0.875rem, 0.9vw, 1.35rem);
-  --text-tv-base: clamp(1rem, 1.05vw, 1.6rem);
-  --text-tv-lg: clamp(1.25rem, 1.4vw, 2.1rem);
-  --text-tv-xl: clamp(1.75rem, 2.1vw, 3.2rem);
-  --text-tv-2xl: clamp(2.5rem, 3.4vw, 5rem);
-  --text-tv-clock: clamp(3.5rem, 5vw, 7.5rem);
+  --text-tv-xs: 0.875rem;
+  --text-tv-sm: 1.0625rem;
+  --text-tv-base: 1.25rem;
+  --text-tv-lg: 1.6875rem;
+  --text-tv-xl: 2.5rem;
+  --text-tv-2xl: 4rem;
+  --text-tv-clock: 6rem;
 }
 
 :root {
   color-scheme: dark;
+
+  /*
+   * WEB-25: the one lever that scales the entire UI.
+   *
+   * Every size in this app is rem-based — padding, gaps, icons, tiles, borders
+   * and the type scale above. Driving the root font size from the viewport
+   * therefore rescales all of it together, in proportion, from this one place.
+   *
+   * The UI is designed against a 1920x1080 canvas. `min()` picks whichever axis
+   * is tighter, so the layout shrinks to fit the constraining dimension instead
+   * of overflowing it — which is what a settings menu that must never scroll
+   * requires. At exactly 1920x1080 this resolves to 1px and the app renders at
+   * its designed size; on a 3840px 4K WebView it doubles, correct for the same
+   * viewing distance.
+   *
+   * Deliberately no clamp() floor: a floor stops the layout shrinking while the
+   * screen keeps shrinking, which is precisely how content ends up off-screen.
+   * Legibility is protected structurally instead — the settings menu shows one
+   * section at a time, so it never has to scale down far.
+   *
+   * To make the whole UI larger or smaller, change these two numbers only.
+   */
+  --tv-scale: min(100vw / 1920, 100vh / 1080);
+}
+
+html {
+  font-size: calc(16 * var(--tv-scale));
+  /*
+   * Some Android TV WebViews inflate text on their own. That would resize the
+   * type while the rem-based boxes around it stayed put — desyncing the scale
+   * and overflowing the very panel this exists to keep on screen.
+   */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 html,
@@ -81,47 +120,33 @@ body {
 }
 
 /*
- * TV type-scale utilities.
- *
- * Components previously repeated `text-[length:var(--text-tv-xs)]` — a
- * 34-character arbitrary-value string — 40 times. These named utilities say the
- * same thing in 10 characters and make the type scale searchable and editable
- * in one place.
+ * WEB-25: the seven `.text-tv-*` classes that used to live here were hand
+ * written duplicates of utilities Tailwind v4 already generates from the
+ * `--text-*` names in the @theme block above. Worse, they sat outside any
+ * @layer, so they beat every Tailwind utility and made a text size impossible
+ * to override on a single element. Deleted; `text-tv-xs` and friends still work
+ * exactly as before, generated from the theme.
  */
-.text-tv-xs {
-  font-size: var(--text-tv-xs);
-}
-.text-tv-sm {
-  font-size: var(--text-tv-sm);
-}
-.text-tv-base {
-  font-size: var(--text-tv-base);
-}
-.text-tv-lg {
-  font-size: var(--text-tv-lg);
-}
-.text-tv-xl {
-  font-size: var(--text-tv-xl);
-}
-.text-tv-2xl {
-  font-size: var(--text-tv-2xl);
-}
-.text-tv-clock {
-  font-size: var(--text-tv-clock);
-}
 
-/* WEB-19: the settings panel needs to scroll on short viewports. */
+/*
+ * WEB-19: the settings panel used to scroll on short viewports.
+ *
+ * WEB-25: it no longer does — it shows one section at a time and is sized to
+ * fit. This remains for the two genuinely unbounded lists: discovered sensors
+ * (there could be one or fifteen) and remote release notes. Both scroll inside
+ * their own box, within the panel; the panel itself never scrolls.
+ */
 .tv-scroll {
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--color-canvas-gold) transparent;
 }
 .tv-scroll::-webkit-scrollbar {
-  width: 8px;
+  width: 0.5rem;
 }
 .tv-scroll::-webkit-scrollbar-thumb {
   background: var(--color-canvas-gold);
-  border-radius: 4px;
+  border-radius: 0.25rem;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -130,92 +155,5 @@ body {
   *::after {
     animation-duration: 0.001ms !important;
     transition-duration: 0.001ms !important;
-  }
-}
-
-/* Short screens (e.g. 720p TV panels): tighten the settings menu so the whole
-   page fits with no scrolling. Text is vw-scaled so it already shrinks; this
-   re-tunes the fixed spacing that does not. */
-@media (max-height: 800px) {
-  [role='dialog'] {
-    padding: 0.875rem;
-    gap: 1.125rem;
-    max-height: 96vh;
-  }
-  [role='dialog'] section > :not(:first-child) {
-    margin-top: 0.375rem;
-  }
-  [role='dialog'] .tv-scroll {
-    max-height: 18vh;
-  }
-}
-
-/* Responsive settings panel - ensure all content fits on one screen */
-/* Mobile screens: force single column layout */
-@media (max-width: 768px) {
-  [role='dialog'] > div {
-    grid-template-columns: 1fr !important;
-    gap: 1rem !important;
-  }
-
-  /* Force all internal grids to single column on mobile */
-  [role='dialog'] .grid {
-    grid-template-columns: 1fr !important;
-    gap: 0.75rem !important;
-  }
-}
-
-/* Very small screens: ultra-compact layout */
-@media (max-width: 480px) {
-  [role='dialog'] {
-    padding: 1rem;
-    max-height: 95vh;
-  }
-
-  [role='dialog'] > div {
-    gap: 0.75rem !important;
-  }
-}
-
-/* Short screens (portrait mobile, small TVs): compact everything */
-@media (max-height: 700px) {
-  [role='dialog'] {
-    max-height: 95vh;
-    padding: 0.75rem;
-  }
-
-  [role='dialog'] > div {
-    gap: 0.75rem;
-  }
-
-  /* Ensure all grids stack vertically on short screens */
-  [role='dialog'] .grid {
-    grid-template-columns: 1fr !important;
-    gap: 0.5rem !important;
-  }
-}
-
-/* Very short screens: extreme compaction */
-@media (max-height: 500px) {
-  [role='dialog'] {
-    padding: 0.5rem;
-    max-height: 98vh;
-  }
-
-  [role='dialog'] > div {
-    gap: 0.5rem;
-  }
-
-  [role='dialog'] section {
-    margin-bottom: 0.25rem;
-  }
-
-  /* Reduce text sizes slightly for extreme cases */
-  [role='dialog'] .text-tv-xs {
-    font-size: clamp(0.65rem, 0.6vw, 0.9rem);
-  }
-
-  [role='dialog'] .text-tv-sm {
-    font-size: clamp(0.75rem, 0.7vw, 1rem);
   }
 }

@@ -48,13 +48,22 @@ export function DisplaySection(props: DisplaySectionProps) {
   } = props;
 
   return (
-    <section className="space-y-4">
+    <section className="flex h-full min-h-0 flex-col gap-8">
       <h3 className={SECTION_HEADING}>
         Display
         <SettingTooltip text="Picture tuning and overlay controls for the artwork screen." />
       </h3>
 
-      <div className="grid gap-4 md:gap-6 lg:grid-cols-2 xl:grid-cols-4">
+      {/*
+       * WEB-25: fixed column counts, deliberately no `lg:`/`xl:` breakpoints.
+       * Those read the *whole window* width while this section lived inside a
+       * half-width column, so on a 1920px screen it tried to be four columns
+       * inside 636px — the main reason the old menu looked jumbled. The section
+       * now owns the full pane, and because every rem scales with the viewport
+       * (see --tv-scale in index.css) the pane is always the same width in rem.
+       * There is nothing left for a breakpoint to respond to.
+       */}
+      <div className="grid grid-cols-3 gap-8">
         <TvSlider
           label="Brightness"
           tooltip="Artwork brightness after ambient adjustments are applied."
@@ -105,8 +114,10 @@ export function DisplaySection(props: DisplaySectionProps) {
             onInteract();
           }}
         />
+      </div>
 
-        <div className="flex gap-4">
+      <div className="grid grid-cols-2 gap-8">
+        <div className="grid grid-cols-2 gap-6">
           <button
             type="button"
             aria-pressed={settings.showClock}
@@ -115,9 +126,9 @@ export function DisplaySection(props: DisplaySectionProps) {
               onInteract();
             }}
             title="Toggle the clock overlay."
-            className={cx(TOGGLE, 'flex-1', settings.showClock ? TOGGLE_ON : TOGGLE_OFF)}
+            className={cx(TOGGLE, settings.showClock ? TOGGLE_ON : TOGGLE_OFF)}
           >
-            <Clock className="h-6 w-6" aria-hidden="true" />
+            <Clock className="h-7 w-7" aria-hidden="true" />
             <span className="text-tv-xs font-bold tracking-widest uppercase">Clock</span>
           </button>
 
@@ -129,62 +140,72 @@ export function DisplaySection(props: DisplaySectionProps) {
               onInteract();
             }}
             title="Toggle the weather overlay. Requires location permission."
-            className={cx(TOGGLE, 'flex-1', settings.showWeather ? TOGGLE_ON : TOGGLE_OFF)}
+            className={cx(TOGGLE, settings.showWeather ? TOGGLE_ON : TOGGLE_OFF)}
           >
-            <Cloud className="h-6 w-6" aria-hidden="true" />
+            <Cloud className="h-7 w-7" aria-hidden="true" />
             <span className="text-tv-xs font-bold tracking-widest uppercase">Weather</span>
           </button>
         </div>
-      </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-white/10 bg-white/5 px-5 py-3">
-        <span className="flex items-center gap-2 text-tv-xs font-bold tracking-[0.25em] text-white/55 uppercase">
-          Overlay Font
-          <SettingTooltip text="Text style used by the time and weather overlays." />
-        </span>
-        <div className="flex gap-2">
-          {FONTS.map((font) => (
-            <button
-              key={font}
-              type="button"
-              aria-pressed={settings.overlayFont === font}
-              onClick={() => {
-                setSetting('overlayFont', font);
-                onInteract();
-              }}
-              className={cx(
-                CHIP,
-                'tracking-widest uppercase',
-                settings.overlayFont === font ? CHIP_ON : CHIP_OFF,
-              )}
-            >
-              {font}
-            </button>
-          ))}
-        </div>
+        {/*
+         * WEB-25: Overlay Font and Units used to share one `flex-wrap` row with
+         * four children, so the two labels and their two chip groups wrapped
+         * independently and landed in a lopsided arrangement. Two labelled rows
+         * instead — each label stays with the chips it belongs to.
+         */}
+        <div className="flex flex-col justify-center gap-5 rounded-xl border border-white/10 bg-white/5 px-6 py-5">
+          <div className="flex flex-col gap-2">
+            <span className="flex items-center gap-2 text-tv-xs font-bold tracking-[0.25em] text-white/55 uppercase">
+              Overlay Font
+              <SettingTooltip text="Text style used by the time and weather overlays." />
+            </span>
+            <div className="flex gap-2">
+              {FONTS.map((font) => (
+                <button
+                  key={font}
+                  type="button"
+                  aria-pressed={settings.overlayFont === font}
+                  onClick={() => {
+                    setSetting('overlayFont', font);
+                    onInteract();
+                  }}
+                  className={cx(
+                    CHIP,
+                    'tracking-widest uppercase',
+                    settings.overlayFont === font ? CHIP_ON : CHIP_OFF,
+                  )}
+                >
+                  {font}
+                </button>
+              ))}
+            </div>
+          </div>
 
-        <span className="flex items-center gap-2 text-tv-xs font-bold tracking-[0.25em] text-white/55 uppercase">
-          Units
-        </span>
-        <div className="flex gap-2">
-          {UNITS.map((unit) => (
-            <button
-              key={unit}
-              type="button"
-              aria-pressed={settings.temperatureUnit === unit}
-              onClick={() => {
-                setSetting('temperatureUnit', unit);
-                onInteract();
-              }}
-              className={cx(
-                CHIP,
-                'uppercase',
-                settings.temperatureUnit === unit ? CHIP_ON : CHIP_OFF,
-              )}
-            >
-              °{unit}
-            </button>
-          ))}
+          <div className="flex flex-col gap-2">
+            <span className="text-tv-xs font-bold tracking-[0.25em] text-white/55 uppercase">
+              Units
+            </span>
+            <div className="flex gap-2">
+              {UNITS.map((unit) => (
+                <button
+                  key={unit}
+                  type="button"
+                  aria-pressed={settings.temperatureUnit === unit}
+                  onClick={() => {
+                    setSetting('temperatureUnit', unit);
+                    onInteract();
+                  }}
+                  className={cx(
+                    CHIP,
+                    'uppercase',
+                    settings.temperatureUnit === unit ? CHIP_ON : CHIP_OFF,
+                  )}
+                >
+                  °{unit}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </section>

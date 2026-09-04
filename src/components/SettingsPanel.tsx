@@ -2,15 +2,62 @@
  * @file The settings menu shell. Sections live in components/settings/. VISUAL.
  */
 
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  ArrowDownToLine,
+  Image as ImageIcon,
+  Moon,
+  Radio,
+  SlidersHorizontal,
+  X,
+} from 'lucide-react';
 
 import { DisplaySection } from './settings/DisplaySection';
 import { MediaSection } from './settings/MediaSection';
 import { PowerSection } from './settings/PowerSection';
 import { UpdatesSection } from './settings/UpdatesSection';
 import { SensorPanel, type SensorPanelProps } from './SensorPanel';
+import { cx } from './ui/styles';
 import type { Settings } from '../lib/settings';
 import type { UseAppUpdateResult } from '../hooks/useAppUpdate';
+
+/*
+ * WEB-25: this panel used to lay all five sections out at once in a scrolling
+ * two-column grid. At 1080p that stack measured ~1120px against a 972px cap, so
+ * the menu always scrolled, the Close button sat below the fold, and the inner
+ * grids — which read *viewport* breakpoints while living in a half-width column
+ * — fought each other for space. It looked jumbled because it was.
+ *
+ * One section at a time, chosen from a rail, is the standard TV settings
+ * pattern (Android TV, Apple TV, Roku all do this) and it is what actually
+ * makes the menu fit: each pane holds a fraction of the old content, so it can
+ * be sized generously and still never overflow.
+ */
+
+const SECTIONS = [
+  { id: 'display', label: 'Display', Icon: SlidersHorizontal },
+  { id: 'media', label: 'Media', Icon: ImageIcon },
+  { id: 'power', label: 'Power', Icon: Moon },
+  { id: 'sensors', label: 'Sensors', Icon: Radio },
+  { id: 'updates', label: 'Updates', Icon: ArrowDownToLine },
+] as const;
+
+type SectionId = (typeof SECTIONS)[number]['id'];
+
+/*
+ * Controls the D-pad can land on, in DOM order.
+ *
+ * `[role="note"]` is excluded deliberately: that is the little "(i)" badge from
+ * SettingTooltip, and every section heading starts with one. Without the
+ * exclusion, pressing Right from the rail landed on an info badge instead of
+ * the first actual setting. The badges stay reachable by continuing to
+ * navigate — they are just never the entry point.
+ */
+const FOCUSABLE =
+  'button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"]):not([role="note"])';
+
+const RAIL_ITEM =
+  'tv-focusable flex items-center gap-3 rounded-xl border px-4 py-3 text-left text-tv-xs font-bold tracking-[0.2em] uppercase transition-colors';
 
 export interface SettingsPanelProps {
   open: boolean;
@@ -49,7 +96,9 @@ export function SettingsPanel(props: SettingsPanelProps) {
     update,
   } = props;
 
-  const panelRef = useRef<HTMLDivElement>(null);
+  const [active, setActive] = useState<SectionId>('display');
+  const railRef = useRef<HTMLDivElement>(null);
+  const paneRef = useRef<HTMLDivElement>(null);
 
   /*
    * WEB-13: this panel was previously always mounted and merely hidden with
@@ -61,16 +110,68 @@ export function SettingsPanel(props: SettingsPanelProps) {
   useEffect(() => {
     if (!open) return;
     const raf = requestAnimationFrame(() => {
-      panelRef.current?.querySelector<HTMLElement>('[tabindex], button, input')?.focus();
+      // Land on the rail, not on whatever control happens to be first in the
+      // pane — the rail is where a remote user expects to start.
+      railRef.current?.querySelector<HTMLElement>('[tabindex="0"]')?.focus();
     });
     return () => cancelAnimationFrame(raf);
   }, [open]);
+
+  const focusPane = useCallback(() => {
+    paneRef.current?.querySelector<HTMLElement>(FOCUSABLE)?.focus();
+  }, []);
+
+  const focusRail = useCallback(() => {
+    railRef.current?.querySelector<HTMLElement>('[tabindex="0"]')?.focus();
+  }, []);
+
+  /*
+   * The rail is a roving tabindex group: only the selected item is reachable,
+   * so the whole rail is one D-pad stop rather than five. Moving the selection
+   * switches the visible section immediately — no separate confirm press, which
+   * is how every TV settings menu behaves and lets you browse at a glance.
+   */
+  const onRailKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const index = SECTIONS.findIndex((section) => section.id === active);
+
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      const delta = event.key === 'ArrowDown' ? 1 : -1;
+      const next = SECTIONS[(index + delta + SECTIONS.length) % SECTIONS.length];
+      if (!next) return;
+      setActive(next.id);
+      onInteract();
+      // The tabindex moves with the selection, so focus after React repaints.
+      requestAnimationFrame(focusRail);
+      return;
+    }
+
+    if (event.key === 'ArrowRight') {
+      event.preventDefault();
+      focusPane();
+    }
+  };
+
+  /*
+   * Left from the pane returns to the rail, but only from the first control —
+   * otherwise it would break left/right movement along the chip rows. TvSlider
+   * already stops arrow keys while a slider is being adjusted, so this cannot
+   * fire mid-adjustment either.
+   */
+  const onPaneKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== 'ArrowLeft') return;
+    const target = event.target as HTMLElement;
+    if (target.tagName === 'INPUT') return;
+    if (paneRef.current?.querySelector<HTMLElement>(FOCUSABLE) !== target) return;
+    event.preventDefault();
+    focusRail();
+  };
 
   if (!open) return null;
 
   return (
     <div
-      className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/45 p-[3vw] backdrop-blur-[2px]"
+      className="absolute inset-0 z-50 flex items-center justify-center bg-black/45 p-8 backdrop-blur-[2px]"
       onKeyDown={(event) => {
         if (event.key === 'Escape' || event.key === 'Backspace') {
           const target = event.target as HTMLElement;
@@ -81,57 +182,112 @@ export function SettingsPanel(props: SettingsPanelProps) {
         }
       }}
     >
+      {/*
+       * Fixed height, not max-height: the panel must not resize as you move
+       * between sections, and `overflow-hidden` makes scrolling structurally
+       * impossible rather than merely unnecessary.
+       *
+       * The height is measured: the tallest section (Power) needs 27.8rem
+       * including padding and the rail needs 25.1rem, so 29rem covers both with
+       * a little slack and the content fills the panel instead of huddling at
+       * the top. Sections shorter than that keep the same panel rather than
+       * making it resize as you move between them.
+       *
+       * Because every rem scales with the viewport (see --tv-scale in
+       * index.css), 29rem x 78rem resolves to at most 43% of viewport height
+       * and 65% of its width at *any* screen size or aspect ratio — it can
+       * never overflow. The max- caps are belt and braces.
+       */}
       <div
-        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label="Ambient Canvas settings"
-        className="w-[min(1400px,92vw)] max-h-[90vh] grid grid-cols-1 md:grid-cols-2 items-start gap-4 md:gap-8 rounded-3xl border border-white/10 bg-canvas-surface/70 p-[2vw] md:p-[2.5vw] shadow-[0_24px_80px_rgba(0,0,0,0.6)] overflow-y-auto tv-scroll"
+        className="grid h-[29rem] max-h-[90vh] w-[78rem] max-w-[94vw] grid-cols-[13rem_1fr] gap-10 overflow-hidden rounded-3xl border border-white/10 bg-canvas-surface/70 p-10 shadow-[0_1.5rem_5rem_rgba(0,0,0,0.6)]"
       >
-        <div className="min-w-0">
-          <DisplaySection
-            settings={settings}
-            setSetting={setSetting}
-            luminance={luminance}
-            warmth={warmth}
-            onLuminanceChange={onLuminanceChange}
-            onWarmthChange={onWarmthChange}
-            onCommitProfile={onCommitProfile}
-            onToggleWeather={onToggleWeather}
-            onInteract={onInteract}
-          />
-        </div>
+        <div
+          ref={railRef}
+          role="tablist"
+          aria-label="Settings sections"
+          aria-orientation="vertical"
+          className="flex flex-col gap-2 border-r border-white/10 pr-10"
+          onKeyDown={onRailKeyDown}
+        >
+          {SECTIONS.map(({ id, label, Icon }) => {
+            const selected = id === active;
+            return (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                tabIndex={selected ? 0 : -1}
+                onClick={() => {
+                  setActive(id);
+                  onInteract();
+                }}
+                className={cx(
+                  RAIL_ITEM,
+                  selected
+                    ? 'border-canvas-gold bg-canvas-gold/10 text-canvas-gold'
+                    : 'border-transparent text-white/45 hover:bg-white/5 hover:text-white/70',
+                )}
+              >
+                <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
+                {label}
+              </button>
+            );
+          })}
 
-        <div className="min-w-0">
-          <MediaSection
-            settings={settings}
-            setSetting={setSetting}
-            localCount={localCount}
-            onPickLocalFolder={onPickLocalFolder}
-            onInteract={onInteract}
-          />
-        </div>
-
-        <div className="min-w-0">
-          <PowerSection settings={settings} setSetting={setSetting} onInteract={onInteract} />
-        </div>
-
-        <div className="min-w-0">
-          <SensorPanel {...sensorPanel} />
-        </div>
-
-        <div className="min-w-0">
-          <UpdatesSection update={update} onInteract={onInteract} />
-        </div>
-
-        <div className="col-span-1 md:col-span-2 flex justify-end">
+          {/*
+           * Close sits at the foot of the rail so it is permanently on screen.
+           * It used to be the last cell of the scrolling grid, which is exactly
+           * why it disappeared whenever the menu overflowed.
+           */}
           <button
             type="button"
             onClick={onClose}
-            className="tv-focusable rounded-full border border-canvas-gold bg-canvas-gold/10 px-8 md:px-10 py-2 md:py-3 text-tv-xs font-bold tracking-[0.3em] text-canvas-gold uppercase transition-colors hover:bg-canvas-gold/20"
+            className={cx(
+              RAIL_ITEM,
+              'mt-auto border-white/15 text-white/60 hover:bg-white/10 hover:text-white/90',
+            )}
           >
+            <X className="h-5 w-5 shrink-0" aria-hidden="true" />
             Close
           </button>
+        </div>
+
+        <div ref={paneRef} className="min-w-0 overflow-hidden" onKeyDown={onPaneKeyDown}>
+          {active === 'display' ? (
+            <DisplaySection
+              settings={settings}
+              setSetting={setSetting}
+              luminance={luminance}
+              warmth={warmth}
+              onLuminanceChange={onLuminanceChange}
+              onWarmthChange={onWarmthChange}
+              onCommitProfile={onCommitProfile}
+              onToggleWeather={onToggleWeather}
+              onInteract={onInteract}
+            />
+          ) : null}
+
+          {active === 'media' ? (
+            <MediaSection
+              settings={settings}
+              setSetting={setSetting}
+              localCount={localCount}
+              onPickLocalFolder={onPickLocalFolder}
+              onInteract={onInteract}
+            />
+          ) : null}
+
+          {active === 'power' ? (
+            <PowerSection settings={settings} setSetting={setSetting} onInteract={onInteract} />
+          ) : null}
+
+          {active === 'sensors' ? <SensorPanel {...sensorPanel} /> : null}
+
+          {active === 'updates' ? <UpdatesSection update={update} onInteract={onInteract} /> : null}
         </div>
       </div>
     </div>

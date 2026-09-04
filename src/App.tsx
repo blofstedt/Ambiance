@@ -244,7 +244,7 @@ export default function App() {
       />
 
       <div
-        className={`absolute bottom-[4vw] left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-5 transition-all duration-700 ${
+        className={`absolute bottom-[4.75rem] left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-5 transition-all duration-700 ${
           showSettings || !uiVisible ? 'pointer-events-none scale-95 opacity-0' : 'opacity-100'
         }`}
       >

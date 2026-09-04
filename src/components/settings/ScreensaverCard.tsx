@@ -42,7 +42,8 @@ export function ScreensaverCard({ onInteract }: ScreensaverCardProps) {
           : 'border-canvas-gold/25 bg-canvas-gold/5',
       )}
     >
-      <div className="flex flex-col items-start gap-5 md:flex-row md:items-center md:justify-between">
+      {/* Fixed row layout, no breakpoints — see the note in DisplaySection. */}
+      <div className="flex flex-row items-center justify-between gap-6">
         <div className="flex items-start gap-4">
           {screensaver.selected ? (
             <Check className="mt-1 h-6 w-6 shrink-0 text-canvas-sage" aria-hidden="true" />
@@ -132,7 +133,17 @@ export function ScreensaverCard({ onInteract }: ScreensaverCardProps) {
                 transition={{ duration: 0.35, ease: 'easeInOut' }}
                 className="overflow-hidden"
               >
-                <Instructions packageName={packageName} />
+                {/* WEB-25: this help block is ~22rem tall and expands inside a
+                  pane that no longer scrolls, so it gets its own bounded box
+                  rather than pushing the section off the bottom. */}
+                <div
+                  className="tv-scroll max-h-[18rem]"
+                  tabIndex={0}
+                  role="region"
+                  aria-label="Screensaver setup instructions"
+                >
+                  <Instructions packageName={packageName} />
+                </div>
               </motion.div>
             ) : null}
           </AnimatePresence>
@@ -164,7 +175,10 @@ function Instructions({ packageName }: { packageName: string }) {
         <li>
           On a computer with Android Platform Tools installed, run these two lines, using your
           TV&rsquo;s address in the first one:
-          <pre className="mt-2 overflow-x-auto rounded-lg border border-white/10 bg-black/40 px-4 py-3 font-mono text-tv-xs whitespace-pre text-canvas-parchment/80 select-text">
+          {/* WEB-25: was `overflow-x-auto whitespace-pre`, i.e. a sideways
+              scrollbar. Nothing in this app may scroll horizontally, and a
+              D-pad cannot drive one anyway, so the commands wrap instead. */}
+          <pre className="mt-2 rounded-lg border border-white/10 bg-black/40 px-4 py-3 font-mono text-tv-xs break-words whitespace-pre-wrap text-canvas-parchment/80 select-text">
             {`adb connect 192.168.1.50\nadb shell pm grant ${packageName} android.permission.WRITE_SECURE_SETTINGS`}
           </pre>
         </li>

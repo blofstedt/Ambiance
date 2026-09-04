@@ -105,7 +105,7 @@ export function Overlays(props: OverlaysProps) {
 
   return (
     <div
-      className="pointer-events-none absolute top-0 left-0 z-30 flex w-full items-start justify-between p-[3vw] transition-all duration-1000"
+      className="pointer-events-none absolute top-0 left-0 z-30 flex w-full items-start justify-between p-14 transition-all duration-1000"
       style={{ opacity: isScreenBlack ? 0 : 0.15 + overlayOpacity * 0.85 }}
     >
       <div className={`transition-opacity duration-[3000ms] ${showClock ? dimClass : 'opacity-0'}`}>
@@ -150,7 +150,7 @@ export function Overlays(props: OverlaysProps) {
           </div>
         </div>
         <div
-          className={`mt-4 max-w-[22vw] truncate text-tv-xs font-bold tracking-[0.3em] text-canvas-sage uppercase opacity-80 drop-shadow-md ${fontClass}`}
+          className={`mt-4 max-w-[26rem] truncate text-tv-xs font-bold tracking-[0.3em] text-canvas-sage uppercase opacity-80 drop-shadow-md ${fontClass}`}
           style={fontStyle}
         >
           {weatherLabel}
