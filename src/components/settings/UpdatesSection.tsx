@@ -79,14 +79,25 @@ function StatusLine({ update }: { update: UseAppUpdateResult }) {
 
   if (checkState === 'available' && available) {
     return (
-      <div className="space-y-2">
-        <p className="flex items-center gap-3 text-tv-sm text-canvas-gold">
+      <div className="flex min-h-0 flex-1 flex-col gap-2">
+        <p className="flex shrink-0 items-center gap-3 text-tv-sm text-canvas-gold">
           <ArrowDownToLine className="h-6 w-6 shrink-0" aria-hidden="true" />
           Version {available.versionName} is available
           {available.sizeBytes > 0 ? ` (${formatBytes(available.sizeBytes)})` : ''}.
         </p>
         {available.notes ? (
-          <p className="max-h-32 overflow-y-auto pr-2 text-tv-xs leading-relaxed whitespace-pre-line text-white/45">
+          /*
+           * WEB-25: was a flat `max-h-32`. Now it takes the room the pane has
+           * left, which is far more, so most release notes will not scroll at
+           * all. Release bodies are arbitrary-length remote text, so this keeps
+           * a scroll box — tabIndex is what lets a remote actually scroll it.
+           */
+          <p
+            className="tv-scroll min-h-0 flex-1 pr-2 text-tv-xs leading-relaxed whitespace-pre-line text-white/45"
+            tabIndex={0}
+            role="region"
+            aria-label="Release notes"
+          >
             {available.notes}
           </p>
         ) : null}
@@ -118,7 +129,7 @@ export function UpdatesSection({ update, onInteract }: UpdatesSectionProps) {
    */
   if (!supported) {
     return (
-      <section className="space-y-4">
+      <section className="flex h-full min-h-0 flex-col gap-6">
         <h3 className={SECTION_HEADING}>
           Software Update
           <SettingTooltip text="Installs new versions of Ambient Canvas straight from the TV." />
@@ -138,14 +149,15 @@ export function UpdatesSection({ update, onInteract }: UpdatesSectionProps) {
     status.state === 'installing';
 
   return (
-    <section className="space-y-4">
+    <section className="flex h-full min-h-0 flex-col gap-6">
       <h3 className={SECTION_HEADING}>
         Software Update
         <SettingTooltip text="Installs new versions of Ambient Canvas straight from the TV." />
       </h3>
 
-      <div className="flex flex-col gap-6 rounded-2xl border border-white/10 bg-black/20 p-6 lg:flex-row lg:items-center lg:justify-between">
-        <div className="min-w-0 flex-1 space-y-3">
+      {/* Fixed row layout, no breakpoints — see the note in DisplaySection. */}
+      <div className="flex min-h-0 flex-1 flex-row items-start justify-between gap-8 rounded-2xl border border-white/10 bg-black/20 p-8">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4">
           <p className="font-mono text-tv-xs tracking-[0.2em] text-white/35 uppercase">
             Installed{installedVersionName ? ` — version ${installedVersionName}` : ''}
           </p>

@@ -38,9 +38,16 @@ export function SettingTooltip({ text }: { text: string }) {
       >
         <Info className="h-3 w-3" aria-hidden="true" />
       </span>
+      {/*
+       * WEB-25: this was centred on the badge (`left-1/2 -translate-x-1/2`)
+       * with a fixed `w-64`, so near a panel edge it ran off the screen — in
+       * the reported screenshot it was clipped off the left. Anchored to the
+       * badge's start edge and sized to its content instead, so it always opens
+       * into the panel rather than out of it.
+       */}
       <span
         role="tooltip"
-        className="pointer-events-none absolute top-7 left-1/2 z-50 w-64 -translate-x-1/2 rounded-lg border border-white/20 bg-black/95 px-3 py-2 text-tv-xs leading-relaxed tracking-[0.08em] text-white/85 uppercase opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
+        className="pointer-events-none absolute top-7 left-0 z-50 w-max max-w-64 rounded-lg border border-white/20 bg-black/95 px-3 py-2 text-tv-xs leading-relaxed tracking-[0.08em] text-white/85 uppercase opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
       >
         {text}
       </span>

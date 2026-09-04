@@ -375,3 +375,91 @@ perhaps once in the appliance's life.
   success.
 - `readScreensaverStatus()`'s parsing is unit tested, including malformed and
   wrongly-typed replies. The Java side is not; it runs only on a device.
+
+---
+
+## 1.4.0 — The settings menu fits any screen (2026-09-04)
+
+The settings menu did not fit on screen. It scrolled vertically, the Close
+button sat below the fold, the overlay-font row was cut off, and a tooltip ran
+off the left edge. It read as jumbled because three sizing rules disagreed with
+each other.
+
+### Why it did not fit
+
+| ID | Cause | Where |
+| --- | --- | --- |
+| **WEB-25** | The type scale was `clamp(rem, Xvw, rem)` — driven by viewport **width** only. Below roughly 1500px wide every token sat on its rem floor and stopped shrinking, and nothing in the app responded to viewport **height** at all. Height is the dimension that actually runs out on a short or sideways screen. | `src/index.css` |
+| **WEB-25** | All box geometry was fixed rem — `p-6`, `gap-8`, `h-6 w-6`, the `w-64` tooltip. When text shrank the boxes did not, so the layout tore apart. | everywhere |
+| **WEB-25** | Section grids used `lg:grid-cols-2 xl:grid-cols-4`, which are **whole-window** breakpoints, while each section lived inside a half-width column. At 1920px the Display and Power sections tried to be four columns inside 636px. This was the main source of the jumbled appearance. | `settings/*.tsx` |
+| **WEB-25** | Five hand-written media-query blocks fought each other with four `!important`s. Three targeted `[role='dialog'] > div`, which is not the grid — the dialog element *is* the grid — so they did nothing at all. | `src/index.css` |
+| **WEB-25** | `[role='dialog'] .tv-scroll { max-height: 18vh }` matched the panel itself, because the panel carried `tv-scroll`. **On a 720p TV this clamped the whole settings menu to about 130px — one row.** A live bug, found while removing the block. | `src/index.css` |
+| **WEB-25** | `[role='dialog']` also matched `Dialog.tsx`, leaking padding and `max-height` into the app's confirmation modal on any screen under 800px tall. | `src/index.css` |
+
+### The fix
+
+One scale lever replaces all of it. `--tv-scale: min(100vw / 1920, 100vh / 1080)`
+drives the root font size, and because every size in this app is rem-based, the
+type scale, padding, gaps, icons, tiles and tooltips now shrink and grow
+together against a 1920x1080 design canvas. `min()` takes whichever axis is
+tighter, so the layout fits the constraining dimension instead of overflowing
+it. The type tokens became plain rem at exactly their old 1080p values, so a
+1080p TV renders as it did before. There is deliberately no `clamp()` floor on
+the root size: a floor stops the layout shrinking while the screen keeps
+shrinking, which is precisely how content ends up off-screen.
+
+Structurally, the menu now shows **one section at a time**, chosen from a nav
+rail — the standard TV settings pattern. Five sections in one scrolling grid
+could never fit; one section in a fixed pane fits with room to spare, and the
+panel is `overflow-hidden` so scrolling is structurally impossible rather than
+merely unnecessary. Close moved into the rail, so it is permanently on screen.
+
+The panel is `29rem x 78rem`, measured against the tallest section (Power needs
+27.8rem including padding; the rail needs 25.1rem). Combined with the scale
+above, that resolves to at most 43% of viewport height and 65% of width at any
+screen size or aspect ratio — it cannot overflow.
+
+| ID | Fix | Where |
+| --- | --- | --- |
+| **WEB-25** | Nav rail plus one pane. Roving tabindex, so the rail is one D-pad stop; Up/Down switches section immediately; Right enters the pane at the first real control; Left from that control returns to the rail. Entry skips the `(i)` info badges, which are focusable and come first in DOM order — without that, Right landed on an info badge instead of the first setting. Left is guarded to the first control only, so chip rows keep their left/right movement. | `src/components/SettingsPanel.tsx` |
+| **WEB-25** | Every `md:`/`lg:`/`xl:` breakpoint inside a section replaced with a fixed column count. The pane is now always the same width in rem, so there is nothing left for a breakpoint to respond to. | `settings/*.tsx`, `SensorPanel.tsx` |
+| **WEB-25** | Overlay Font and Units shared one `flex-wrap` row with four children, so labels and chip groups wrapped independently into a lopsided arrangement. Split into two labelled groups with the label above its chips — which also fixed a real 37px horizontal overflow of the four font chips. | `settings/DisplaySection.tsx` |
+| **WEB-25** | The Black Mode and Keep Awake tiles carried a full sentence each and wrapped to four lines in the old narrow column. At full pane width they are one line; `line-clamp-2` makes that a hard ceiling so the tile height stays predictable if the wording changes. | `settings/PowerSection.tsx` |
+| **WEB-25** | The sensor list's `max-h-[30vh]` and the release notes' `max-h-32` became a `min-h-0 flex-1` chain, so each takes exactly the room its pane has left rather than an arbitrary fraction of the screen. Both kept their scroll box — see below. Both also gained `tabIndex`/`role`/`aria-label`: **a scroll box with no focusable children cannot be scrolled by a remote at all.** | `SensorPanel.tsx`, `settings/UpdatesSection.tsx` |
+| **WEB-25** | The screensaver help block had `overflow-x-auto` with `whitespace-pre` — a sideways scrollbar, which nothing in this app may have and a D-pad cannot drive anyway. The adb commands now wrap. The expandable block also got a bounded box, since it is ~22rem tall and expands inside a pane that no longer scrolls. | `settings/ScreensaverCard.tsx` |
+| **WEB-25** | The tooltip was `left-1/2 -translate-x-1/2 w-64`, which is what ran off the left edge in the reported screenshot. Anchored to the badge's start edge and sized to its content, so it opens into the panel rather than out of it. | `src/components/TvSlider.tsx` |
+| **WEB-25** | `p-[3vw]`, `max-w-[22vw]` and `bottom-[4vw]` on the artwork overlays converted to rem. The clock had the same width-only bug and was oversized on short screens; it now holds the same proportion of the screen at every size. No raw `vw`/`vh` remains outside the single `--tv-scale` definition and the panel's two belt-and-braces caps. | `Overlays.tsx`, `App.tsx` |
+| **WEB-25** | Deleted the seven hand-written `.text-tv-*` classes. Tailwind v4 already generates identical utilities from the `--text-*` names in `@theme`, and these sat outside any `@layer`, so they beat every utility and made a text size impossible to override on one element. Confirmed by building and grepping `dist`. | `src/index.css` |
+| **WEB-25** | Added `text-size-adjust: 100%`. Some Android TV WebViews inflate text on their own, which would resize the type while the rem boxes around it stayed put — desyncing the scale and overflowing the panel this work exists to keep on screen. | `src/index.css` |
+
+`index.css` went from 221 lines to 152.
+
+### Two things still scroll, deliberately
+
+The sensor list and the release notes are the only genuinely unbounded content
+in the app — an arbitrary number of discovered devices, and a release body
+written on GitHub. Both keep a scroll box **inside** the pane; the menu itself
+never scrolls. Bounding them to the room their pane has left, rather than to an
+arbitrary `30vh` or `8rem`, is the actual improvement. With the realistic zero
+to two sensors, nothing scrolls at all.
+
+### Verified
+
+`npm run verify` green: typecheck, lint, Prettier, 80 tests, build. Driven in a
+real browser at 1920x1080, 1280x720, 1366x768, 915x412, 800x600, 1920x540,
+3840x2160 and 1080x1920: all five sections fit at every size with no scrolling,
+nothing clipped and Close always visible. A simulated twelve-sensor list
+absorbed 1055px of scrolling inside its own box while the panel stayed at zero
+overflow. The D-pad path was walked with the keyboard only.
+
+### Not verified here
+
+- Real sensor discovery cannot run in a browser preview — it uses native HTTP
+  and the browser blocks it by CORS (invariant 3 in CLAUDE.md), so the Sensors pane
+  was measured with an injected list rather than live devices.
+- Directional focus movement *within* a pane relies on the TV WebView's own
+  spatial navigation, as it did before this change. Desktop Chrome does not
+  move focus with arrow keys, so only the rail behaviour and the rail/pane
+  crossings could be exercised here.
+- The Updates pane's download and install path is native and still needs a
+  published release on a real TV. Only its layout was checked.

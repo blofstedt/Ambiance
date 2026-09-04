@@ -31,13 +31,14 @@ export interface PowerSectionProps {
 
 export function PowerSection({ settings, setSetting, onInteract }: PowerSectionProps) {
   return (
-    <section className="space-y-4">
+    <section className="flex h-full min-h-0 flex-col gap-8">
       <h3 className={SECTION_HEADING}>
         Power &amp; Sleep
         <SettingTooltip text="Motion, blackout, and panel protection behaviour." />
       </h3>
 
-      <div className="grid gap-4 md:gap-6 lg:grid-cols-2 xl:grid-cols-4">
+      {/* Fixed columns, no breakpoints — see the note in DisplaySection. */}
+      <div className="grid grid-cols-2 gap-8">
         <TvSlider
           label="Sleep Timer"
           tooltip="Minutes without motion before the screen blacks out."
@@ -69,7 +70,16 @@ export function PowerSection({ settings, setSetting, onInteract }: PowerSectionP
             onInteract();
           }}
         />
+      </div>
 
+      {/*
+       * WEB-25: these two tiles carry a sentence each. In the old half-width
+       * column they wrapped to four lines and each tile grew to ~150px, a large
+       * part of why the menu overflowed. At full pane width they are one or two
+       * lines; `line-clamp-2` makes that a hard ceiling, so the tile height
+       * stays predictable even if the wording changes later.
+       */}
+      <div className="grid grid-cols-2 gap-8">
         <button
           type="button"
           aria-pressed={settings.blackModeEnabled}
@@ -82,9 +92,9 @@ export function PowerSection({ settings, setSetting, onInteract }: PowerSectionP
             settings.blackModeEnabled ? 'border-canvas-sage bg-black text-canvas-sage' : TOGGLE_OFF,
           )}
         >
-          <EyeOff className="h-6 w-6" aria-hidden="true" />
+          <EyeOff className="h-7 w-7" aria-hidden="true" />
           <span className="text-tv-xs font-bold tracking-widest uppercase">Black Mode</span>
-          <span className="text-center text-tv-xs normal-case opacity-60">
+          <span className="line-clamp-2 text-center text-tv-xs normal-case opacity-60">
             Recommended for OLED and Mini-LED panels
           </span>
         </button>
@@ -98,9 +108,9 @@ export function PowerSection({ settings, setSetting, onInteract }: PowerSectionP
           }}
           className={cx(TOGGLE, settings.keepScreenAwake ? TOGGLE_ON : TOGGLE_OFF)}
         >
-          <Sun className="h-6 w-6" aria-hidden="true" />
+          <Sun className="h-7 w-7" aria-hidden="true" />
           <span className="text-tv-xs font-bold tracking-widest uppercase">Keep Awake</span>
-          <span className="text-center text-tv-xs normal-case opacity-60">
+          <span className="line-clamp-2 text-center text-tv-xs normal-case opacity-60">
             Stops the TV sleeping on its own timer
           </span>
         </button>
@@ -108,7 +118,7 @@ export function PowerSection({ settings, setSetting, onInteract }: PowerSectionP
 
       {canOpenScreensaverSettings() ? <ScreensaverCard onInteract={onInteract} /> : null}
 
-      <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-2 gap-8">
         <div>
           <div className="mb-2 flex items-center gap-2 text-tv-xs font-bold tracking-widest text-white/40 uppercase">
             Motion Sensitivity

@@ -232,8 +232,8 @@ export function SensorPanel(props: SensorPanelProps) {
   const entries = Object.entries(sensors);
 
   return (
-    <section className="space-y-4">
-      <div className="flex items-center justify-between border-b border-white/10 pb-2">
+    <section className="flex h-full min-h-0 flex-col gap-6">
+      <div className="flex shrink-0 items-center justify-between border-b border-white/10 pb-2">
         <h3 className={cx(SECTION_HEADING, 'border-0 pb-0')}>
           Sensors &amp; Telemetry
           <SettingTooltip text="Find ambient sensors, choose the active one, and view live readings." />
@@ -266,38 +266,59 @@ export function SensorPanel(props: SensorPanelProps) {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div className="tv-scroll max-h-[30vh] rounded-xl bg-white/5 p-5">
-          {entries.length === 0 ? (
-            <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
-              <p className="text-tv-sm font-bold text-canvas-gold uppercase">No sensors found</p>
-              <p className="max-w-md text-tv-xs leading-relaxed text-white/50">
-                Power on your ambient sensor, then connect a phone to the
-                <span className="text-canvas-sage"> “{SETUP_PORTAL_SSID}” </span>
-                Wi-Fi network to put it on your home network. Or enter its address below.
-              </p>
-            </div>
-          ) : (
-            entries.map(([id, sensor]) => (
-              <SensorListItem
-                key={id}
-                sensor={sensor}
-                isActive={id === selectedSensorId}
-                isBusy={busy}
-                renameDraft={renameDrafts[id] ?? displayName(sensor.name)}
-                hasPendingRename={Boolean(pendingRenames[id])}
-                onRenameDraftChange={(value) =>
-                  setRenameDrafts((previous) => ({ ...previous, [id]: value }))
-                }
-                onSelect={() => selectSensor(id, sensor)}
-                onRename={() => void renameSensorById(id)}
-                onForget={() => confirmForget(id, sensor)}
-                onSecure={() => promptForNewPassword(id)}
-              />
-            ))
-          )}
+      <div className="grid min-h-0 flex-1 grid-cols-[1.4fr_1fr] gap-8">
+        <div className="flex min-h-0 flex-col rounded-xl bg-white/5 p-5">
+          {/*
+           * WEB-25: this was `max-h-[30vh]`, an arbitrary fraction of the
+           * screen that one of the old (broken) media queries then clamped to
+           * 18vh — about one row on a 720p TV. Now it takes exactly the room
+           * the pane has left, which is a definite number because the panel has
+           * a fixed height.
+           *
+           * This is the one genuinely unbounded thing in the menu: there could
+           * be one discovered sensor or fifteen. It keeps its own scroll box so
+           * the panel itself never scrolls. tabIndex makes it reachable with a
+           * remote when the list is empty and has no focusable children of its
+           * own — without it a D-pad cannot scroll this at all.
+           */}
+          <div
+            className="tv-scroll min-h-0 flex-1"
+            tabIndex={0}
+            role="region"
+            aria-label="Discovered sensors"
+          >
+            {entries.length === 0 ? (
+              <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
+                <p className="text-tv-sm font-bold text-canvas-gold uppercase">No sensors found</p>
+                <p className="max-w-md text-tv-xs leading-relaxed text-white/50">
+                  Power on your ambient sensor, then connect a phone to the
+                  <span className="text-canvas-sage"> “{SETUP_PORTAL_SSID}” </span>
+                  Wi-Fi network to put it on your home network. Or enter its address below.
+                </p>
+              </div>
+            ) : (
+              entries.map(([id, sensor]) => (
+                <SensorListItem
+                  key={id}
+                  sensor={sensor}
+                  isActive={id === selectedSensorId}
+                  isBusy={busy}
+                  renameDraft={renameDrafts[id] ?? displayName(sensor.name)}
+                  hasPendingRename={Boolean(pendingRenames[id])}
+                  onRenameDraftChange={(value) =>
+                    setRenameDrafts((previous) => ({ ...previous, [id]: value }))
+                  }
+                  onSelect={() => selectSensor(id, sensor)}
+                  onRename={() => void renameSensorById(id)}
+                  onForget={() => confirmForget(id, sensor)}
+                  onSecure={() => promptForNewPassword(id)}
+                />
+              ))
+            )}
+          </div>
 
-          <div className="mt-4 flex items-center gap-3">
+          {/* Pinned below the scroller so it is always reachable. */}
+          <div className="mt-4 flex shrink-0 items-center gap-3">
             <input
               type="text"
               value={manualAddress}

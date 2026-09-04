@@ -59,7 +59,7 @@ vocabulary and it is cheap.
 | --- | --- | --- |
 | **Colours, fonts, spacing, sizing, "make it prettier"** | `src/index.css` (design tokens live here) | anything in `lib/`, `android/`, `firmware/` |
 | **Animations, transitions, fades, "feels janky"** | `src/components/ArtworkCanvas.tsx`, `src/index.css` | `lib/`, `hooks/`, `firmware/` |
-| **Settings menu — overall layout, shell, close button** | `src/components/SettingsPanel.tsx` (~115 lines, just the shell) | the section files, unless the change is inside one |
+| **Settings menu — overall layout, shell, nav rail, close button** | `src/components/SettingsPanel.tsx` (the rail + one-section-at-a-time shell, including its D-pad handling) | the section files, unless the change is inside one |
 | **Brightness / warmth / grain / clock / weather toggle / font / units** | `src/components/settings/DisplaySection.tsx` | other sections |
 | **Image source, rotation speed, pause rotation** | `src/components/settings/MediaSection.tsx` | other sections |
 | **Sleep timer, black mode, motion sensitivity, OLED saver, keep awake** | `src/components/settings/PowerSection.tsx` | other sections |
@@ -96,9 +96,10 @@ resist editing individual components:
 
 | To change… | Edit | Effect |
 | --- | --- | --- |
+| The size of everything at once | `src/index.css` → `:root` → `--tv-scale` | Whole UI rescales in proportion |
 | Any brand colour | `src/index.css` → `@theme` → `--color-canvas-*` | Every screen, instantly |
 | The same colour in JS (slider thumbs) | `src/lib/theme.ts` → `BRAND` | Inline styles only |
-| All text sizes | `src/index.css` → `@theme` → `--text-tv-*` | Whole UI rescales |
+| All text sizes | `src/index.css` → `@theme` → `--text-tv-*` | All text, relative to the scale |
 | Every button / input / chip / toggle | `src/components/ui/styles.ts` | Every control everywhere |
 
 Changing the accent colour is genuinely a one-line edit. Do not reintroduce
@@ -186,6 +187,21 @@ Do not undo them. `CHANGELOG.md` has the full history if you need the why.
 14. **Use `useConstant`, never `useRef(new Thing())`.** useRef takes a value, not
     a factory, so the second form rebuilds the object on every render. This app
     re-renders once a second, for weeks.
+15. **Every size stays in `rem`, and `--tv-scale` is the only viewport-relative
+    value in the app.** The root font size is derived from it, so rem is what
+    makes padding, gaps, icons and text scale together. A raw `px`, `vw` or `vh`
+    size anywhere else opts that element out of the scale and is how the
+    settings menu stopped fitting the last three times.
+16. **No viewport breakpoints (`md:`, `lg:`, `xl:`) inside the settings menu.**
+    They read the whole window while a section sees only its pane, which is what
+    made the old menu look jumbled. The pane is always the same width in rem, so
+    fixed column counts are correct and a breakpoint has nothing to respond to.
+17. **The settings panel never scrolls.** It is a fixed size with
+    `overflow-hidden`, sized to its tallest section. If new content does not
+    fit, shorten it or give it its own bounded box — do not make the panel
+    scroll, and do not let it resize per section. The only two scroll boxes are
+    the sensor list and the release notes, both genuinely unbounded, and both
+    need `tabIndex` or a remote cannot scroll them at all.
 
 ---
 

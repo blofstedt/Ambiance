@@ -31,7 +31,7 @@ export function TelemetryReadout({ telemetry, connection }: TelemetryReadoutProp
    */
   if (connection !== 'connected') {
     return (
-      <div className="flex flex-col items-center justify-center gap-3 rounded-xl bg-white/5 p-6 text-center">
+      <div className="flex h-full flex-col items-center justify-center gap-3 rounded-xl bg-white/5 p-6 text-center">
         <p className="text-tv-sm font-bold text-white/70 uppercase">
           {connection === 'searching' ? 'Searching for a sensor…' : 'No live readings'}
         </p>
@@ -43,7 +43,7 @@ export function TelemetryReadout({ telemetry, connection }: TelemetryReadoutProp
   }
 
   return (
-    <div className="flex flex-col justify-center gap-6 rounded-xl bg-white/5 p-6">
+    <div className="flex h-full flex-col justify-center gap-6 rounded-xl bg-white/5 p-6">
       <Row label="Luminance" value={String(Math.round(telemetry.lux))} unit="LUX" />
       <Row
         label="Temperature"
